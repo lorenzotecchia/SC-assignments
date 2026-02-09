@@ -1,5 +1,7 @@
 import numpy as np
 from numpy import ndarray
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 
 
 def update_wave(x_current: ndarray, x_old: ndarray, const: float) -> ndarray:
@@ -13,11 +15,11 @@ def update_wave(x_current: ndarray, x_old: ndarray, const: float) -> ndarray:
 
     Returns the values of the wave function at time t + dt, for each x.
     """
-    x_new = x_old.copy()
-    x_new[1:-2] = (
-        2 * x_current[1:-2]
-        - x_old[1:-2]
-        + const * (x_current[2:-1] - 2 * x_current[1:-2] + x_current[0:-3])
+    x_new = np.zeros_like(x_current)
+    x_new[1:-1] = (
+        2 * x_current[1:-1]
+        - x_old[1:-1]
+        + const * (x_current[2:] - 2 * x_current[1:-1] + x_current[0:-2])
     )
     return x_new
 
@@ -27,7 +29,7 @@ def simulate_wave(
     delta_x: float,
     delta_t: float,
     c: float,
-    time_steps,
+    time_steps: int,
 ):
     """
     Repeats update_wave for a chosen amount of time_steps,
@@ -44,7 +46,7 @@ def simulate_wave(
     constant = c * delta_t / delta_x
     constant2 = constant * constant
 
-    wave_states = np.zeros((initial_x.shape[0], time_steps))
+    wave_states = np.zeros((int(time_steps), int(initial_x.shape[0])))
 
     wave_states[0, :] = initial_x
     wave_states[1, :] = initial_x  # zero initial velocity
@@ -56,3 +58,30 @@ def simulate_wave(
         wave_states[i, :] = update_wave(x_current, x_old, constant2)
 
     return wave_states
+
+
+def animate(wave_states, delta_x):
+    fig, ax = plt.subplots()
+    time_steps = wave_states.shape[0]
+    n_points = int(wave_states.shape[1])
+    x = delta_x * np.array(range(n_points))
+
+    ax.set_xlim(x.min(), x.max())
+    ax.set_ylim(wave_states.min(), wave_states.max())
+
+    (line,) = ax.plot([], [], lw=3)
+
+    def init():
+        line.set_data([], [])
+        return (line,)
+
+    def update(i):
+        y = wave_states[i]
+        line.set_data(x, y)
+
+        return (line,)
+
+    ani = animation.FuncAnimation(
+        fig=fig, func=update, init_func=init, frames=time_steps, interval=30
+    )
+    plt.show()
