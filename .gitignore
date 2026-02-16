@@ -1,3 +1,7 @@
+output/fd_diffusion_data.txt
+output/fd_diffusion_xt_data.txt
+output/fd_diffusion_params.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
