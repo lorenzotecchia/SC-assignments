@@ -87,8 +87,7 @@ int main() {
     for (int j = 0; j < x_num; j++) {
       u1[j] = std::sin(2.0 * std::numbers::pi * x_vec[j]);
     }
-    run_case("case1", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1,
-             save_every);
+    run_case("case1", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1, save_every);
   }
 
   // Case ii: Psi(x, 0) = sin(5*pi*x)
@@ -97,8 +96,7 @@ int main() {
     for (int j = 0; j < x_num; j++) {
       u1[j] = std::sin(5.0 * std::numbers::pi * x_vec[j]);
     }
-    run_case("case2", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1,
-             save_every);
+    run_case("case2", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1, save_every);
   }
 
   // Case iii: Psi(x, 0) = sin(5*pi*x) if 1/5 < x < 2/5, else 0
@@ -109,8 +107,7 @@ int main() {
         u1[j] = std::sin(5.0 * std::numbers::pi * x_vec[j]);
       }
     }
-    run_case("case3", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1,
-             save_every);
+    run_case("case3", x_num, x1, x2, t_num, t1, t2, c, x_vec, u1, save_every);
   }
 
   return 0;

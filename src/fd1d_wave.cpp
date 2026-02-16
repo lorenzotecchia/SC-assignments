@@ -271,4 +271,3 @@ std::vector<double> r8vec_linspace_new(int n, double a_first, double a_last) {
 //   ISBN: 0-13-012641-1, LC: QA297.P45.
 //
 // Modernized to C++20 (std::vector, std::span, std::function).
-
