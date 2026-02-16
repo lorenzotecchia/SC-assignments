@@ -12,8 +12,8 @@ from scipy.special import erfc
 def theoretical_value(y: np.ndarray, t: float, n: int, diffusion_constant: float):
     result = np.zeros_like(y)
     for i in range(int(n)):
-        result += erfc((1 - y + 2 * i) / (2 * t * np.sqrt(diffusion_constant)))
-        result -= erfc((1 + y + 2 * i) / (2 * t * np.sqrt(diffusion_constant)))
+        result += erfc((1 - y + 2 * i) / (2 * np.sqrt(diffusion_constant * t)))
+        result -= erfc((1 + y + 2 * i) / (2 * np.sqrt(diffusion_constant * t)))
     return result
 
 
@@ -33,8 +33,16 @@ with open("output/fd_diffusion_data.txt", "r") as f:
 data = np.loadtxt(lines)
 data = data.reshape((t_save, n_rows, n_columns))
 
-# time steps array
+# time steps and y-coordinate arrays
 time_data = np.array([i * t_delta_save for i in range(int(t_save))])
+y = np.linspace(0, 1, n_rows)  # y-axis coordinates
+
+# theoretical solution at each time step:
+theory_concentration = np.zeros((int(t_save), n_rows))
+for t in range(1, int(t_save)):
+    theory_concentration[t] = theoretical_value(
+        y, t * t_delta_save, 1000, diffusion_constant
+    )
 
 """
 fig, ax = plt.subplots()
@@ -53,7 +61,6 @@ plt.show()
 
 # Choose a column to track (e.g., middle column)
 col_index = n_columns // 2
-y = np.linspace(0, 1, n_rows)  # y-axis coordinates
 
 # Create figure
 fig, ax = plt.subplots()
@@ -72,9 +79,7 @@ ax.set_title(f"Concentration along column {col_index}")
 # Update function for animation
 def update(frame):
     line_data.set_data(y, data[frame, :, col_index])
-    line_theory.set_data(
-        y, theoretical_value(y, time_data[frame], 1e4, diffusion_constant)
-    )
+    line_theory.set_data(y, theory_concentration[frame])
     ax.set_title(f"Time step {frame}")
     return (
         line_data,
@@ -83,6 +88,6 @@ def update(frame):
 
 
 # Create animation
-ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=20)
+ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=5)
 
 plt.show()
