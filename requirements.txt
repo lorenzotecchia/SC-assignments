@@ -3,3 +3,4 @@ matplotlib
 findiff
 scikit-learn
 scipy
+numba
