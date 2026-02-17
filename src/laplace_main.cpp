@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main() {
-  int N = 50;
+  int N = 100;
   double tolerance = 1e-5;
   int max_iter = 100000;
 
@@ -25,6 +25,13 @@ int main() {
   std::ofstream out("output/laplace_solution.txt");
   out << result.solution << "\n";
   out.close();
+
+  // Write convergence deltas for comparison plots
+  std::ofstream dout("output/laplace_deltas.txt");
+  for (double d : result.deltas) {
+    dout << d << "\n";
+  }
+  dout.close();
 
   return 0;
 }

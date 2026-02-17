@@ -1,11 +1,13 @@
 #pragma once
 #include <Eigen/Dense>
 #include <functional>
+#include <vector>
 
 struct JacobiResult {
   Eigen::MatrixXd solution;
   int iterations;
   double final_residual;
+  std::vector<double> deltas;
 };
 
 JacobiResult
