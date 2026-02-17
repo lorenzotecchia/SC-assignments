@@ -1,21 +1,20 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from numba import njit
-
 
 max_iters = 10000
 epsilon = 1e-5
-N = 50
+N = 100
 
 
 @njit
 def Gauss_Seidel(N, epsilon, max_iters):
     # grid with N+1 points
-    c_grid = np.zeros((N+1, N+1))
+    c_grid = np.zeros((N + 1, N + 1))
 
     # boundaries for y
-    c_grid[:,0] = 0
-    c_grid[:,N] = 1
+    c_grid[:, 0] = 0
+    c_grid[:, N] = 1
 
     deltas = []
 
@@ -23,7 +22,7 @@ def Gauss_Seidel(N, epsilon, max_iters):
         delta = 0.0
 
         for j in range(1, N):
-            for i in range(N+1):
+            for i in range(N + 1):
 
                 # periodic boundaries for x via modular indexing
                 i_plus = (i + 1) % (N + 1)
@@ -32,7 +31,12 @@ def Gauss_Seidel(N, epsilon, max_iters):
                 # remember old c for stopping criteria
                 old_c = c_grid[i, j]
 
-                c_grid[i, j] = 0.25 * (c_grid[i_plus, j] + c_grid[i_minus, j] + c_grid[i, j+1] + c_grid[i, j-1])
+                c_grid[i, j] = 0.25 * (
+                    c_grid[i_plus, j]
+                    + c_grid[i_minus, j]
+                    + c_grid[i, j + 1]
+                    + c_grid[i, j - 1]
+                )
 
                 # delta is max distance between new and old c
                 delta = max(delta, abs(c_grid[i, j] - old_c))
@@ -44,15 +48,16 @@ def Gauss_Seidel(N, epsilon, max_iters):
             break
 
     return c_grid, iter, deltas
+
 
 @njit
 def SOR(omega, N, epsilon, max_iters):
     # grid with N+1 points
-    c_grid = np.zeros((N+1, N+1))
+    c_grid = np.zeros((N + 1, N + 1))
 
     # boundaries for y
-    c_grid[:,0] = 0
-    c_grid[:,N] = 1
+    c_grid[:, 0] = 0
+    c_grid[:, N] = 1
 
     deltas = []
 
@@ -60,7 +65,7 @@ def SOR(omega, N, epsilon, max_iters):
         delta = 0.0
 
         for j in range(1, N):
-            for i in range(N+1):
+            for i in range(N + 1):
 
                 # periodic boundaries for x via modular indexing
                 i_plus = (i + 1) % (N + 1)
@@ -69,7 +74,17 @@ def SOR(omega, N, epsilon, max_iters):
                 # remember old c for stopping criteria
                 old_c = c_grid[i, j]
 
-                c_grid[i, j] = omega * 0.25 * (c_grid[i_plus, j] + c_grid[i_minus, j] + c_grid[i, j+1] + c_grid[i, j-1]) + (1 - omega) * old_c
+                c_grid[i, j] = (
+                    omega
+                    * 0.25
+                    * (
+                        c_grid[i_plus, j]
+                        + c_grid[i_minus, j]
+                        + c_grid[i, j + 1]
+                        + c_grid[i, j - 1]
+                    )
+                    + (1 - omega) * old_c
+                )
 
                 # delta is max distance between new and old c
                 delta = max(delta, abs(c_grid[i, j] - old_c))
@@ -82,8 +97,9 @@ def SOR(omega, N, epsilon, max_iters):
 
     return c_grid, iter, deltas
 
+
 def optimal_omega(omega_min, omega_max, step):
-    '''Find optimal omega that minimizes number of iterations for different N using SOR'''
+    """Find optimal omega that minimizes number of iterations for different N using SOR"""
 
     # store optimal omegas and corresponding num of iterations for each N
     results = []
@@ -100,23 +116,21 @@ def optimal_omega(omega_min, omega_max, step):
         # index of smallest iteration
         opt_index = np.argmin(iterations)
 
-        results.append({
-            "N": N,
-            "omega": omegas[opt_index],
-            "iterations": iterations[opt_index]
-        })
+        results.append(
+            {"N": N, "omega": omegas[opt_index], "iterations": iterations[opt_index]}
+        )
 
     return results
 
 
 def compare_to_analytical(c_gauss, c_SOR):
-    '''Compare Gauss-Seidel and SOR solutions to analytical solutions'''
+    """Compare Gauss-Seidel and SOR solutions to analytical solutions"""
 
     # mean
     c_mean_gauss = np.mean(c_gauss, axis=0)
     c_mean_SOR = np.mean(c_SOR, axis=0)
 
-    y = np.linspace(0, 1, N+1)
+    y = np.linspace(0, 1, N + 1)
 
     # mean absolute error
     mae_gauss = np.mean(np.abs(y - c_mean_gauss))
@@ -130,78 +144,76 @@ def compare_to_analytical(c_gauss, c_SOR):
     plt.legend()
     plt.xlabel("y")
     plt.ylabel("concentration")
-    plt.title('Comparing Numerical and Analytical Solution')
+    plt.title("Comparing Numerical and Analytical Solution")
     plt.show()
 
     return mae_gauss, mae_SOR
 
 
-# Warm up JIT (first call compiles, subsequent calls are fast)
-print("Compiling Numba JIT functions...")
-_ = Gauss_Seidel(5, 1e-2, 10)
-_ = SOR(1.5, 5, 1e-2, 10)
-print("Done.\n")
+if __name__ == "__main__":
+    # Warm up JIT (first call compiles, subsequent calls are fast)
+    print("Compiling Numba JIT functions...")
+    _ = Gauss_Seidel(5, 1e-2, 10)
+    _ = SOR(1.5, 5, 1e-2, 10)
+    print("Done.\n")
 
+    print("\n########## H ##########\n")
+    c_gauss, iter_gauss, deltas_gauss = Gauss_Seidel(N, epsilon, max_iters)
+    print("\n-------- Gauss-Seidel --------\n")
+    print("Solution using Gauss-Seidel\n", c_gauss)
+    print("\nNumber of iterations for Gauss-Seidel: ", iter_gauss)
 
-print("\n########## H ##########\n")
-c_gauss, iter_gauss, deltas_gauss = Gauss_Seidel(N, epsilon, max_iters)
-print("\n-------- Gauss-Seidel --------\n")
-print("Solution using Gauss-Seidel\n", c_gauss)
-print("\nNumber of iterations for Gauss-Seidel: ", iter_gauss)
+    # heatmap
+    plt.figure(figsize=(6, 5))
+    plt.imshow(c_gauss, cmap="viridis")
+    plt.colorbar(label="Concentration")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Numerical Solution using Gauss-Seidel")
+    plt.show()
 
-# heatmap
-plt.figure(figsize=(6,5))
-plt.imshow(c_gauss, cmap='viridis')
-plt.colorbar(label='Concentration')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Numerical Solution using Gauss-Seidel')
-plt.show()
+    omega = 1.95
+    c_SOR, iter_SOR, deltas_SOR = SOR(omega, N, epsilon, max_iters)
+    print("\n-------- SOR --------\n")
+    print("Solution using SOR\n", c_SOR)
+    print("\nNumber of iterations for SOR: ", iter_SOR)
 
+    # heatmap
+    plt.figure(figsize=(6, 5))
+    plt.imshow(c_SOR, cmap="viridis")
+    plt.colorbar(label="Concentration")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Numerical Solution using SOR")
+    plt.show()
 
-omega = 1.95
-c_SOR, iter_SOR , deltas_SOR= SOR(omega, N, epsilon, max_iters)
-print("\n-------- SOR --------\n")
-print("Solution using SOR\n", c_SOR )
-print("\nNumber of iterations for SOR: ", iter_SOR)
+    omega_min = 1.7
+    omega_max = 2
+    step = 0.1
+    results = optimal_omega(omega_min, omega_max, step)
+    print("\n-------- Find optimal omega for SOR --------\n")
+    for r in results:
+        print(
+            f"For N={r['N']}: optimal omega = {r['omega']} with {r['iterations']} iterations"
+        )
 
-# heatmap
-plt.figure(figsize=(6,5))
-plt.imshow(c_SOR, cmap='viridis')
-plt.colorbar(label='Concentration')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Numerical Solution using SOR')
-plt.show()
+    print("\n-------- Compare to analytical results --------\n")
+    mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
+    print("Mean absolute error of Gauss-Seidel: ", mae_gauss)
+    print("Mean absolute error of SOR: ", mae_SOR)
 
+    print("\n########## I ##########\n")
 
-omega_min = 1.7
-omega_max = 2
-step = 0.1
-results = optimal_omega(omega_min, omega_max, step)
-print("\n-------- Find optimal omega for SOR --------\n")
-for r in results:
-    print(f"For N={r['N']}: optimal omega = {r['omega']} with {r['iterations']} iterations")
+    # Show how delta depends on the number of iterations k
 
+    omega = 1.75
+    _, _, deltas_SOR_175 = SOR(omega, N, epsilon, max_iters)
 
-print("\n-------- Compare to analytical results --------\n")
-mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
-print("Mean absolute error of Gauss-Seidel: ", mae_gauss)
-print("Mean absolute error of SOR: ", mae_SOR)
-
-
-print("\n########## I ##########\n")
-
-# Show how delta depends on the number of iterations k
-
-omega = 1.75
-_, _, deltas_SOR_175= SOR(omega, N, epsilon, max_iters)
-
-plt.semilogx(deltas_gauss, label="Gauss-Seidel", color="#2196F3")
-plt.semilogx(deltas_SOR, label=r"SOR $\omega$=1.95", color="#FF5722")
-plt.semilogx(deltas_SOR_175, label=r"SOR $\omega$=1.75", color="#9C27B0")
-plt.legend()
-plt.xlabel("Iterations k")
-plt.ylabel(r"$\delta$")
-plt.title(r"Behaviour of convergence measure $\delta$")
-plt.show()
+    plt.semilogx(deltas_gauss, label="Gauss-Seidel", color="#2196F3")
+    plt.semilogx(deltas_SOR, label=r"SOR $\omega$=1.95", color="#FF5722")
+    plt.semilogx(deltas_SOR_175, label=r"SOR $\omega$=1.75", color="#9C27B0")
+    plt.legend()
+    plt.xlabel("Iterations k")
+    plt.ylabel(r"$\delta$")
+    plt.title(r"Behaviour of convergence measure $\delta$")
+    plt.show()

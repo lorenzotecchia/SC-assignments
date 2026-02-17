@@ -12,6 +12,8 @@ jacobi_solve(int N, double tolerance, int max_iter,
 
   int iter = 0;
   double diff = 0.0;
+  std::vector<double> deltas;
+  deltas.reserve(max_iter);
 
   for (iter = 0; iter < max_iter; iter++) {
     diff = 0.0;
@@ -37,10 +39,11 @@ jacobi_solve(int N, double tolerance, int max_iter,
       grid_new(i, N - 1) = grid_new(i, 0);
     }
     std::swap(grid_old, grid_new);
+    deltas.push_back(diff);
 
     if (diff < tolerance) {
       break;
     }
   }
-  return JacobiResult{grid_old, iter, diff};
+  return JacobiResult{grid_old, iter, diff, std::move(deltas)};
 }
