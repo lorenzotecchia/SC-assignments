@@ -2,18 +2,18 @@
 #include <iostream>
 
 int main() {
-  int x_num = 201;
+  int x_num = 401;
   int y_num = x_num;
   int t_num = 15001;
   int save_every = 100;
   double diffusion_constant = 1.0;
   double x_delta = 1.0 / (x_num - 1);
-  double t_delta = x_delta * x_delta / diffusion_constant / 15;
+  double t_delta = x_delta * x_delta / diffusion_constant / 15.0;
 
   int t_save = (t_num + save_every - 1) / save_every;
   double t_delta_save = save_every * t_delta;
 
-  double coefficient = 4.0 * t_delta * diffusion_constant / (x_delta * x_delta);
+  double coefficient = t_delta * diffusion_constant / (x_delta * x_delta);
 
   std::cout << "the coefficient is: " << coefficient << '\n';
 

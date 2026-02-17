@@ -12,8 +12,11 @@ from scipy.special import erfc
 def theoretical_value(y: np.ndarray, t: float, n: int, diffusion_constant: float):
     result = np.zeros_like(y)
     for i in range(int(n)):
-        result += erfc((1 - y + 2 * i) / (2 * np.sqrt(diffusion_constant * t)))
-        result -= erfc((1 + y + 2 * i) / (2 * np.sqrt(diffusion_constant * t)))
+        result = (
+            result
+            + erfc((1.0 - y + 2.0 * i) / (2.0 * np.sqrt(diffusion_constant * t)))
+            - erfc((1.0 + y + 2.0 * i) / (2.0 * np.sqrt(diffusion_constant * t)))
+        )
     return result
 
 
@@ -39,6 +42,7 @@ y = np.linspace(0, 1, n_rows)  # y-axis coordinates
 
 # theoretical solution at each time step:
 theory_concentration = np.zeros((int(t_save), n_rows))
+theory_concentration[0][-1] = 1.0
 for t in range(1, int(t_save)):
     theory_concentration[t] = theoretical_value(
         y, t * t_delta_save, 1000, diffusion_constant
@@ -65,8 +69,8 @@ col_index = n_columns // 2
 # Create figure
 fig, ax = plt.subplots()
 ax2 = ax.twinx()
-(line_data,) = ax.plot([], [], lw=2)
-(line_theory,) = ax2.plot([], [], lw=2, c="r", ls="--")
+(line_theory,) = ax.plot([], [], lw=2, c="r", ls="-")
+scatter_data = ax2.scatter([], [], s=10)
 ax.set_xlim(0, 1)
 ax.set_ylim(0, 1)
 ax2.set_xlim(0, 1)
@@ -78,16 +82,16 @@ ax.set_title(f"Concentration along column {col_index}")
 
 # Update function for animation
 def update(frame):
-    line_data.set_data(y, data[frame, :, col_index])
     line_theory.set_data(y, theory_concentration[frame])
+    scatter_data.set_offsets(np.c_[y, data[frame, :, col_index]])
     ax.set_title(f"Time step {frame}")
     return (
-        line_data,
+        scatter_data,
         line_theory,
     )
 
 
 # Create animation
-ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=5)
+ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=50)
 
 plt.show()
