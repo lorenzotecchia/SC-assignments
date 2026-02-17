@@ -27,7 +27,7 @@ simulate_diffusion(const std::vector<std::vector<double>> &initial_state,
 
     if (t % save_every == 0) {
       assert(t_save_index < data_collector.size());
-      data_collector[t_save_index++] = new_state;
+      data_collector[t_save_index++] = old_state;
     }
   }
 
