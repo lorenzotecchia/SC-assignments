@@ -6,6 +6,7 @@ PYTHON     := python3
 
 SRC_DIR    := src
 OUT_DIR    := output
+OUT_PLOT_DIR := output/plots
 
 .PHONY: all wave laplace diffusion build-wave build-laplace build-diffusion \
         run-wave run-laplace run-diffusion plot-wave plot-laplace plot-diffusion clean
@@ -48,10 +49,15 @@ build-laplace: $(LAPLACE_BIN)
 $(LAPLACE_BIN): $(LAPLACE_SRCS) $(SRC_DIR)/laplace.hpp
 	$(CXX_OMP) $(CXXFLAGS) -fopenmp $(EIGEN_INC) -I$(SRC_DIR) -o $@ $(LAPLACE_SRCS)
 
-$(OUT_DIR)/laplace_solution.txt: $(LAPLACE_BIN) | $(OUT_DIR)
+LAPLACE_OUTPUTS := $(OUT_DIR)/laplace_solution.txt \
+                   $(OUT_DIR)/laplace_sink.txt \
+                   $(OUT_DIR)/laplace_insulator.txt \
+                   $(OUT_DIR)/laplace_omega_sweep.txt
+
+$(LAPLACE_OUTPUTS): $(LAPLACE_BIN) | $(OUT_DIR)
 	./$(LAPLACE_BIN)
 
-run-laplace: $(OUT_DIR)/laplace_solution.txt
+run-laplace: $(LAPLACE_OUTPUTS)
 
 plot-laplace: $(OUT_DIR)/laplace_solution.txt
 	$(PYTHON) scripts/plot_laplace.py
@@ -80,6 +86,7 @@ plot-diffusion: $(OUT_DIR)/fd_diffusion_data.txt
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
+	mkdir -p $(OUT_PLOT_DIR)
 
 clean:
 	rm -f $(WAVE_BIN) $(LAPLACE_BIN) $(DIFFUSION_BIN)
