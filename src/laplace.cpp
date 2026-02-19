@@ -96,18 +96,24 @@ sor_solve(int N, double omega, double tolerance, int max_iter,
 
         // ── Periodic x-neighbours ───────────────────────────────────────────
         int jm = (j - 1 + (N - 1)) % (N - 1); // left  (wraps)
-        int jp = (j + 1) % (N - 1);            // right (wraps)
+        int jp = (j + 1) % (N - 1);           // right (wraps)
 
         // ── Neighbour values: replace insulator with own value (zero-flux) ──
         // This enforces ∂c/∂n = 0 at the insulator surface.
-        double c_north = (mask(i + 1, j) == static_cast<int>(CellType::INSULATOR))
-                             ? grid(i, j) : grid(i + 1, j);
-        double c_south = (mask(i - 1, j) == static_cast<int>(CellType::INSULATOR))
-                             ? grid(i, j) : grid(i - 1, j);
-        double c_east  = (mask(i, jp) == static_cast<int>(CellType::INSULATOR))
-                             ? grid(i, j) : grid(i, jp);
-        double c_west  = (mask(i, jm) == static_cast<int>(CellType::INSULATOR))
-                             ? grid(i, j) : grid(i, jm);
+        double c_north =
+            (mask(i + 1, j) == static_cast<int>(CellType::INSULATOR))
+                ? grid(i, j)
+                : grid(i + 1, j);
+        double c_south =
+            (mask(i - 1, j) == static_cast<int>(CellType::INSULATOR))
+                ? grid(i, j)
+                : grid(i - 1, j);
+        double c_east = (mask(i, jp) == static_cast<int>(CellType::INSULATOR))
+                            ? grid(i, j)
+                            : grid(i, jp);
+        double c_west = (mask(i, jm) == static_cast<int>(CellType::INSULATOR))
+                            ? grid(i, j)
+                            : grid(i, jm);
 
         // ── SOR update ───────────────────────────────────────────────────────
         // omega=1 → Gauss-Seidel; 1<omega<2 → over-relaxation (faster).
@@ -116,7 +122,8 @@ sor_solve(int N, double omega, double tolerance, int max_iter,
         grid(i, j) = omega * avg + (1.0 - omega) * old_val;
 
         double local_diff = std::abs(grid(i, j) - old_val);
-        if (local_diff > diff) diff = local_diff;
+        if (local_diff > diff)
+          diff = local_diff;
       }
     }
 
@@ -125,7 +132,8 @@ sor_solve(int N, double omega, double tolerance, int max_iter,
       grid(i, N - 1) = grid(i, 0);
 
     deltas.push_back(diff);
-    if (diff < tolerance) break;
+    if (diff < tolerance)
+      break;
   }
 
   return SorResult{grid, iter, diff, std::move(deltas)};

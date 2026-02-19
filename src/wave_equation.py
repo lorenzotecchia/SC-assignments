@@ -1,7 +1,7 @@
-import numpy as np
-from numpy import ndarray
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+import numpy as np
+from numpy import ndarray
 
 
 def update_wave(x_current: ndarray, x_old: ndarray, const: float) -> ndarray:
@@ -84,4 +84,5 @@ def animate(wave_states, delta_x):
     ani = animation.FuncAnimation(
         fig=fig, func=update, init_func=init, frames=time_steps, interval=30
     )
+    plt.savefig("output/plots/wave_sim.eps", fomrat="eps")
     plt.show()

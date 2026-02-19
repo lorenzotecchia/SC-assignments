@@ -138,13 +138,36 @@ datasets = [
     (sink_grid, sink_mask,       "SOR with sinks (K)"),
     (ins_grid,  ins_mask,        "SOR with insulator (L)"),
 ]
+
+# INSULATOR cells (mask==2) are never updated by the solver – their stored c=0
+# is just the zero-initialisation, NOT a physical value.  Mask them as NaN so
+# they render as gray and don't masquerade as sinks.
+# SINK cells (mask==1) ARE physically at c=0 (Dirichlet BC): show their true
+# value so the contour lines flow visibly into them.
+INSULATOR = 2
+cmap_obj = plt.cm.viridis.copy()
+cmap_obj.set_bad(color="#808080", alpha=1.0)   # gray for insulator interior
+
+x_coords = np.linspace(0, 1, N)
+y_coords = np.linspace(0, 1, N)
+field_levels = np.linspace(0.05, 0.95, 10)  # iso-concentration lines
+
 for ax, (grid, mask, title) in zip(axes, datasets):
-    im = ax.imshow(grid, cmap="viridis", origin="lower", extent=[0, 1, 0, 1],
-                   vmin=0, vmax=1)
-    # Overlay object outlines (white contour where mask != 0)
+    # Only mask insulator cells; sink c=0 is real and should be visible.
+    display_grid = np.where(mask == INSULATOR, np.nan, grid)
+
+    im = ax.imshow(display_grid, cmap=cmap_obj, origin="lower",
+                   extent=[0, 1, 0, 1], vmin=0, vmax=1)
+
+    # Contour lines: reveal field bending around insulator and flux into sinks.
+    ax.contour(x_coords, y_coords, display_grid, levels=field_levels,
+               colors="white", alpha=0.55, linewidths=0.7)
+
+    # White outline around each object region
     if mask.any():
-        ax.contour(mask, levels=[0.5], colors="white", linewidths=1.5,
-                   extent=[0, 1, 0, 1], origin="lower")
+        ax.contour(x_coords, y_coords, mask, levels=[0.5],
+                   colors="white", linewidths=1.5)
+
     fig.colorbar(im, ax=ax, label=r"$c(x,y)$", shrink=0.8)
     ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_title(title)
     ax.set_aspect("equal")

@@ -1,8 +1,9 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import json
+
 import matplotlib.animation as animation
 import matplotlib.cm as cm
-import json
+import matplotlib.pyplot as plt
+import numpy as np
 from scipy.special import erfc
 
 # TODO theoretical value does not act like simulated one :c
@@ -93,5 +94,5 @@ def update(frame):
 
 # Create animation
 ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=50)
-
+plt.savefig("output/plots/fd_diffusion.eps", format="eps")
 plt.show()

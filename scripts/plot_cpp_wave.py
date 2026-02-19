@@ -1,7 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.cm as cm
+import matplotlib.pyplot as plt
+import numpy as np
 
 x = np.loadtxt("output/x_data.txt")
 
@@ -38,8 +38,9 @@ for ax, wave_states, (_, title) in zip(axes_snap, data, cases):
     for t_snap, color in zip(snapshot_times, colors):
         frame_idx = int(round(t_snap / t2 * (t_frames - 1)))
         frame_idx = min(frame_idx, t_frames - 1)
-        ax.plot(x, wave_states[frame_idx], color=color, lw=1.5,
-                label=f"t = {t_snap:.2f}")
+        ax.plot(
+            x, wave_states[frame_idx], color=color, lw=1.5, label=f"t = {t_snap:.2f}"
+        )
 
 axes_snap[0].set_ylabel(r"$\Psi(x, t)$")
 axes_snap[2].legend(loc="upper right", fontsize=8)
@@ -56,25 +57,28 @@ for ax, wave_states, (_, title) in zip(axes_anim, data, cases):
     ax.set_ylim(ymin, ymax)
     ax.set_xlabel("x")
     ax.set_title(title, fontsize=10)
-    line, = ax.plot([], [], lw=2)
+    (line,) = ax.plot([], [], lw=2)
     lines.append((line, wave_states))
 
 axes_anim[0].set_ylabel(r"$\Psi(x, t)$")
+
 
 def init():
     for line, _ in lines:
         line.set_data([], [])
     return [l for l, _ in lines]
 
+
 def update(i):
     for line, wave_states in lines:
         line.set_data(x, wave_states[i])
     return [l for l, _ in lines]
 
+
 ani = animation.FuncAnimation(
-    fig=fig_anim, func=update, init_func=init, frames=t_frames,
-    interval=10, blit=True
+    fig=fig_anim, func=update, init_func=init, frames=t_frames, interval=10, blit=True
 )
 
 fig_anim.tight_layout()
+plt.savefig("output/plots/cpp_wave.eps", format="eps")
 plt.show()
