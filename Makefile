@@ -7,11 +7,11 @@ PYTHON     := python3
 SRC_DIR    := src
 OUT_DIR    := output
 
-.PHONY: all wave laplace build-wave build-laplace run-wave run-laplace \
-        plot-wave plot-laplace clean
+.PHONY: all wave laplace diffusion build-wave build-laplace build-diffusion \
+        run-wave run-laplace run-diffusion plot-wave plot-laplace plot-diffusion clean
 
-# Default: build and run both
-all: plot-wave plot-laplace
+# Default: build and run all
+all: plot-wave plot-laplace plot-diffusion
 
 # ── Wave equation ─────────────────────────────────────────────────────
 
@@ -56,11 +56,31 @@ run-laplace: $(OUT_DIR)/laplace_solution.txt
 plot-laplace: $(OUT_DIR)/laplace_solution.txt
 	$(PYTHON) scripts/plot_laplace.py
 
+# ── Diffusion equation (OpenMP) ───────────────────────────────────────
+
+DIFFUSION_BIN  := diffusion_sim
+DIFFUSION_SRCS := $(SRC_DIR)/main_fd_diffusion.cpp $(SRC_DIR)/fd_diffusion.cpp
+
+diffusion: plot-diffusion
+
+build-diffusion: $(DIFFUSION_BIN)
+
+$(DIFFUSION_BIN): $(DIFFUSION_SRCS) $(SRC_DIR)/fd_diffusion.hpp
+	$(CXX_OMP) $(CXXFLAGS) -fopenmp -I$(SRC_DIR) -o $@ $(DIFFUSION_SRCS)
+
+$(OUT_DIR)/fd_diffusion_data.txt: $(DIFFUSION_BIN) | $(OUT_DIR)
+	./$(DIFFUSION_BIN)
+
+run-diffusion: $(OUT_DIR)/fd_diffusion_data.txt
+
+plot-diffusion: $(OUT_DIR)/fd_diffusion_data.txt
+	$(PYTHON) scripts/fd_diffusion.py
+
 # ── Shared ────────────────────────────────────────────────────────────
 
 $(OUT_DIR):
 	mkdir -p $(OUT_DIR)
 
 clean:
-	rm -f $(WAVE_BIN) $(LAPLACE_BIN)
+	rm -f $(WAVE_BIN) $(LAPLACE_BIN) $(DIFFUSION_BIN)
 	rm -f $(OUT_DIR)/*.txt
