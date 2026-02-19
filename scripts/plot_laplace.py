@@ -1,10 +1,12 @@
-import sys, os
-import numpy as np
+import os
+import sys
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Allow importing from src/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from src.iterative_methods import Gauss_Seidel, SOR, N, epsilon, max_iters
+from src.iterative_methods import SOR, Gauss_Seidel, N, epsilon, max_iters
 
 # ── Load Jacobi data from C++ output ────────────────────────────────
 jacobi_grid = np.loadtxt("output/laplace_solution.txt")
@@ -50,14 +52,30 @@ fig1.tight_layout()
 # ── Figure 2: Convergence delta vs iteration k ──────────────────────
 fig2, ax2 = plt.subplots(figsize=(8, 5))
 
-ax2.semilogy(range(1, len(jacobi_deltas) + 1), jacobi_deltas,
-             label=f"Jacobi (C++, {len(jacobi_deltas)} iters)", color="#4CAF50")
-ax2.semilogy(range(1, len(deltas_gs) + 1), deltas_gs,
-             label=f"Gauss-Seidel ({len(deltas_gs)} iters)", color="#2196F3")
-ax2.semilogy(range(1, len(deltas_sor195) + 1), deltas_sor195,
-             label=f"SOR $\\omega$=1.95 ({len(deltas_sor195)} iters)", color="#FF5722")
-ax2.semilogy(range(1, len(deltas_sor175) + 1), deltas_sor175,
-             label=f"SOR $\\omega$=1.75 ({len(deltas_sor175)} iters)", color="#9C27B0")
+ax2.semilogy(
+    range(1, len(jacobi_deltas) + 1),
+    jacobi_deltas,
+    label=f"Jacobi (C++, {len(jacobi_deltas)} iters)",
+    color="#4CAF50",
+)
+ax2.semilogy(
+    range(1, len(deltas_gs) + 1),
+    deltas_gs,
+    label=f"Gauss-Seidel ({len(deltas_gs)} iters)",
+    color="#2196F3",
+)
+ax2.semilogy(
+    range(1, len(deltas_sor195) + 1),
+    deltas_sor195,
+    label=f"SOR $\\omega$=1.95 ({len(deltas_sor195)} iters)",
+    color="#FF5722",
+)
+ax2.semilogy(
+    range(1, len(deltas_sor175) + 1),
+    deltas_sor175,
+    label=f"SOR $\\omega$=1.75 ({len(deltas_sor175)} iters)",
+    color="#9C27B0",
+)
 
 ax2.set_xlabel("Iteration $k$")
 ax2.set_ylabel(r"$\delta$ (max absolute change)")
@@ -78,12 +96,13 @@ y_py = np.linspace(0, 1, N + 1)
 c_mean_gs = np.mean(c_gs, axis=0)
 c_mean_sor = np.mean(c_sor195, axis=0)
 
-ax3.plot(y_jacobi, c_mean_jacobi, "s-", ms=3, lw=1.5,
-         label="Jacobi (C++)", color="#4CAF50")
-ax3.plot(y_py, c_mean_gs, "o-", ms=3, lw=1.5,
-         label="Gauss-Seidel", color="#2196F3")
-ax3.plot(y_py, c_mean_sor, "^:", ms=3, lw=1.5,
-         label="SOR $\\omega$=1.95", color="#FF5722")
+ax3.plot(
+    y_jacobi, c_mean_jacobi, "s-", ms=3, lw=1.5, label="Jacobi (C++)", color="#4CAF50"
+)
+ax3.plot(y_py, c_mean_gs, "o-", ms=3, lw=1.5, label="Gauss-Seidel", color="#2196F3")
+ax3.plot(
+    y_py, c_mean_sor, "^:", ms=3, lw=1.5, label="SOR $\\omega$=1.95", color="#FF5722"
+)
 ax3.plot(y_py, y_py, "--", lw=1.5, color="black", label="Analytical: $c = y$")
 
 ax3.set_xlabel("$y$")
@@ -92,5 +111,56 @@ ax3.set_title("Cross-section: x-averaged concentration vs analytical")
 ax3.legend()
 ax3.grid(True, alpha=0.3)
 fig3.tight_layout()
+plt.savefig("output/plots/laplace.eps", format="eps")
+plt.show()
 
+# ── K & L: Object visualisation ──────────────────────────────────────────────
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load new outputs
+sor_base  = np.loadtxt("output/laplace_sor_baseline.txt")
+sink_grid = np.loadtxt("output/laplace_sink.txt")
+sink_mask = np.loadtxt("output/laplace_sink_mask.txt")
+ins_grid  = np.loadtxt("output/laplace_insulator.txt")
+ins_mask  = np.loadtxt("output/laplace_insulator_mask.txt")
+
+# omega sweep: columns are [omega, iters_no_obj, iters_sink]
+sweep = np.loadtxt("output/laplace_omega_sweep.txt", skiprows=1)
+omega_vals, iters_empty, iters_sink = sweep[:, 0], sweep[:, 1], sweep[:, 2]
+
+N = sink_grid.shape[0]
+
+# ── Figure K-1: Concentration heatmaps (baseline vs sinks vs insulator) ──────
+fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+datasets = [
+    (sor_base, np.zeros((N, N)), "SOR baseline (no objects)"),
+    (sink_grid, sink_mask,       "SOR with sinks (K)"),
+    (ins_grid,  ins_mask,        "SOR with insulator (L)"),
+]
+for ax, (grid, mask, title) in zip(axes, datasets):
+    im = ax.imshow(grid, cmap="viridis", origin="lower", extent=[0, 1, 0, 1],
+                   vmin=0, vmax=1)
+    # Overlay object outlines (white contour where mask != 0)
+    if mask.any():
+        ax.contour(mask, levels=[0.5], colors="white", linewidths=1.5,
+                   extent=[0, 1, 0, 1], origin="lower")
+    fig.colorbar(im, ax=ax, label=r"$c(x,y)$", shrink=0.8)
+    ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_title(title)
+    ax.set_aspect("equal")
+fig.suptitle("Laplace steady-state solutions with objects", fontsize=13, y=1.02)
+fig.tight_layout()
+plt.savefig("output/plots/laplace_objects_heatmaps.eps", format="eps")
+plt.show()
+
+# ── Figure K-2: Omega sweep ───────────────────────────────────────────────────
+fig2, ax2 = plt.subplots(figsize=(8, 5))
+ax2.plot(omega_vals, iters_empty, "o-", label="No objects", color="#2196F3")
+ax2.plot(omega_vals, iters_sink,  "s-", label="With sinks", color="#FF5722")
+ax2.set_xlabel(r"$\omega$")
+ax2.set_ylabel("Iterations to convergence")
+ax2.set_title(r"Effect of $\omega$ on convergence (K)")
+ax2.legend(); ax2.grid(True, alpha=0.3)
+fig2.tight_layout()
+plt.savefig("output/plots/laplace_omega_sweep.eps", format="eps")
 plt.show()
