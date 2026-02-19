@@ -47,3 +47,15 @@ jacobi_solve(int N, double tolerance, int max_iter,
   }
   return JacobiResult{grid_old, iter, diff, std::move(deltas)};
 }
+
+void fill_mask(Eigen::MatrixXi &mask, std::vector<Rect> rects, CellType type) {
+  // Cast enum to int so Eigen can store it in MatrixXi
+  int val = static_cast<int>(type);
+  for (const Rect &r : rects) {
+    for (int i = r.y0; i <= r.y1; ++i) {
+      for (int j = r.x0; j <= r.x1; ++j) {
+        mask(i, j) = val;
+      }
+    }
+  }
+}
