@@ -1,4 +1,5 @@
-output/*
+output/*.txt
+output/plots/*.eps
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
