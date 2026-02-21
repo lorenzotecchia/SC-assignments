@@ -18,9 +18,7 @@ make clean        # remove binaries and output/*.txt
 Python-only simulations (not wired into the Makefile):
 
 ```bash
-python3 main.py                     # projectile motion animation
 python3 src/iterative_methods.py    # Gauss-Seidel & SOR solvers
-python3 scripts/vibrating_string.py # Python wave equation solver
 ```
 
 ---
