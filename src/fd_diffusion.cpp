@@ -1,8 +1,6 @@
 #include "fd_diffusion.hpp"
 #include <cassert>
 
-// TODO: maybe initial state could be anything, and ghost/fixed boundaries
-// should be added inside simulate_diffusion.
 std::vector<std::vector<std::vector<double>>>
 simulate_diffusion(const std::vector<std::vector<double>> &initial_state,
                    int t_num, int save_every, double coefficient) {
@@ -94,8 +92,6 @@ void check_fixed_boundaries(const std::vector<std::vector<double>> &matrix) {
   assert(matrix[n_rows - 1] == vec_ones);
 }
 
-// TODO maybe I can use less code and implement just one general function to
-// save data
 void save_data_txt(
     const std::vector<std::vector<std::vector<double>>> &data_collector,
     const std::string &output_filename) {

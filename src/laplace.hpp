@@ -17,7 +17,8 @@ jacobi_solve(int N, double tolerance, int max_iter,
 
 // ── New additions for K & L ──────────────────────────────────────────────────
 
-// Cell type: NORMAL is solved by SOR; SINK is forced to 0; INSULATOR blocks flux.
+// Cell type: NORMAL is solved by SOR; SINK is forced to 0; INSULATOR blocks
+// flux.
 enum class CellType { NORMAL = 0, SINK = 1, INSULATOR = 2 };
 
 // Axis-aligned rectangle in grid-index coordinates (inclusive on all sides).

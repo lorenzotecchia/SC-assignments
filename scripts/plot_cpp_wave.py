@@ -6,9 +6,12 @@ import numpy as np
 x = np.loadtxt("output/x_data.txt")
 
 cases = [
-    ("output/case1_wave_data.txt", r"$\Psi(x,0) = \sin(2\pi x)$"),
-    ("output/case2_wave_data.txt", r"$\Psi(x,0) = \sin(5\pi x)$"),
-    ("output/case3_wave_data.txt", r"$\Psi(x,0) = \sin(5\pi x)$, $x \in (1/5, 2/5)$"),
+    ("output/case1_leapfrog_wave_data.txt", r"$\Psi(x,0) = \sin(2\pi x)$"),
+    ("output/case2_leapfrog_wave_data.txt", r"$\Psi(x,0) = \sin(5\pi x)$"),
+    (
+        "output/case3_leapfrog_wave_data.txt",
+        r"$\Psi(x,0) = \sin(5\pi x)$, $x \in (1/5, 2/5)$",
+    ),
 ]
 
 data = []

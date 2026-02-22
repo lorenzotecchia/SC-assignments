@@ -6,8 +6,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import erfc
 
-# TODO theoretical value does not act like simulated one :c
-
 
 # function to compute theoretical value
 def theoretical_value(y: np.ndarray, t: float, n: int, diffusion_constant: float):
