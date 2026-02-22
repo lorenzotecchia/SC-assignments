@@ -3,6 +3,7 @@ import json
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 from scipy.special import erfc
 
@@ -16,8 +17,6 @@ plt.rcParams.update(
         "ytick.labelsize": 11,
     }
 )
-
-# TODO theoretical value does not act like simulated one :c
 
 
 # function to compute theoretical value
@@ -60,23 +59,9 @@ for t in range(1, int(t_save)):
         y, t * t_delta_save, 1000, diffusion_constant
     )
 
-"""
-fig, ax = plt.subplots()
-im = ax.imshow(data[0], origin="lower", cmap="Purples", interpolation="gaussian")
-
-
-def update(frame):
-    im.set_data(data[frame])
-    return [im]
-
-
-ani = animation.FuncAnimation(fig, update, frames=data.shape[0], interval=50)
-plt.show()
-
-"""
-
 # Choose a column to track (e.g., middle column)
 col_index = n_columns // 2
+data_mid = data[:, :, col_index]
 
 # Create figure
 fig, ax = plt.subplots(figsize=(8, 5))
@@ -96,7 +81,7 @@ ax.grid(True, alpha=0.3)
 # Update function for animation
 def update(frame):
     line_theory.set_data(y, theory_concentration[frame])
-    scatter_data.set_offsets(np.c_[y, data[frame, :, col_index]])
+    scatter_data.set_offsets(np.c_[y, data_mid[frame]])
     ax.set_title(f"Time step {frame}")
     return (
         scatter_data,
@@ -107,24 +92,66 @@ def update(frame):
 # Create animation
 ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=50)
 
-# ── 3 static snapshots (early / mid / late) ───────────────────────────
-n_frames = data.shape[0]
-snap_frames = [1, n_frames // 2, n_frames - 1]
-fig_snap, axes_snap = plt.subplots(1, 3, figsize=(14, 4))
-fig_snap.suptitle("Diffusion — concentration snapshots", fontsize=13)
-for ax_s, fr in zip(axes_snap, snap_frames):
-    t_val = fr * t_delta_save
-    ax_s.plot(y, theory_concentration[fr], lw=2, c="r", ls="-", label="theory")
-    ax_s.scatter(y, data[fr, :, col_index], s=10, label="simulation")
-    ax_s.set_xlim(0, 1)
-    ax_s.set_ylim(0, 1)
-    ax_s.set_xlabel("y")
-    ax_s.set_ylabel("Concentration")
-    ax_s.set_title(f"t = {t_val:.3f}")
-    ax_s.legend(fontsize=8)
-    ax_s.grid(True, alpha=0.3)
-fig_snap.tight_layout()
-fig_snap.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
+# ── 3 static snapshots ────────────────────────────────────────────────
+times_to_plot = np.array([0, 0.001, 0.01, 0.1, 1.0])
+indices_to_plot = np.floor(times_to_plot / t_delta_save).astype(int)
+
+plt.figure()
+
+for k, idx in enumerate(indices_to_plot):
+    plt.plot(y, theory_concentration[idx], lw=2, c="r", ls="-")
+    plt.scatter(y, data_mid[idx], s=10)
+
+    # annotate near where the curve crosses c = 0.5
+    y_label_idx = np.argmin(np.abs(theory_concentration[idx] - 0.5))
+    plt.text(
+        y[y_label_idx] + 0.01,
+        0.5 + 0.03,
+        f"t={times_to_plot[k]:g}s",
+        fontsize=8,
+        color="k",
+        va="bottom",
+        ha="left",
+        clip_on=False,
+    )
+
+handles = [
+    Line2D([0], [0], color="r", lw=2, linestyle="-", label="Theory"),
+    Line2D(
+        [0],
+        [0],
+        marker="o",
+        linestyle="None",
+        color="C0",
+        markersize=5,
+        label="Simulation",
+    ),
+]
+plt.legend(handles=handles, fontsize=8)
+plt.xlim(0, 1)
+plt.ylim(0, 1)
+plt.title("Diffusion — concentration snapshots")
+plt.xlabel("y")
+plt.ylabel("Concentration")
+plt.legend(fontsize=8)
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.subplots_adjust(right=0.82)
+plt.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
+plt.close()
+
+# ── 4 error plot ──────────────────────────────────────────────────────
+error = np.abs(theory_concentration - data_mid).sum(axis=1)
+
+plt.figure()
+plt.scatter(time_data, error, s=10)
+plt.title("Diffusion — absolute error over time")
+plt.xlim(0, 1)
+plt.xlabel("time")
+plt.ylabel("error (abs)")
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig("output/plots/fd_diffusion_error.png", dpi=150)
 
 ani.save("output/plots/fd_diffusion.gif", writer="pillow", fps=20, dpi=80)
-plt.close('all')
+plt.close("all")
