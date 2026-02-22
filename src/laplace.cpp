@@ -90,7 +90,7 @@ sor_solve(int N, double omega, double tolerance, int max_iter,
           grid(i, j) = 0.0; // enforce sink (in case BCs reset it)
           continue;
         }
-        if (mask(i, j) == static_cast<int>(CellType::IDEAL_INSULATOR)) {
+        if (mask(i, j) == static_cast<int>(CellType::INSULATOR)) {
           continue; // insulator is not solved
         }
 
@@ -101,21 +101,19 @@ sor_solve(int N, double omega, double tolerance, int max_iter,
         // ── Neighbour values: replace insulator with own value (zero-flux) ──
         // This enforces ∂c/∂n = 0 at the insulator surface.
         double c_north =
-            (mask(i + 1, j) == static_cast<int>(CellType::IDEAL_INSULATOR))
+            (mask(i + 1, j) == static_cast<int>(CellType::INSULATOR))
                 ? grid(i, j)
                 : grid(i + 1, j);
         double c_south =
-            (mask(i - 1, j) == static_cast<int>(CellType::IDEAL_INSULATOR))
+            (mask(i - 1, j) == static_cast<int>(CellType::INSULATOR))
                 ? grid(i, j)
                 : grid(i - 1, j);
-        double c_east =
-            (mask(i, jp) == static_cast<int>(CellType::IDEAL_INSULATOR))
-                ? grid(i, j)
-                : grid(i, jp);
-        double c_west =
-            (mask(i, jm) == static_cast<int>(CellType::IDEAL_INSULATOR))
-                ? grid(i, j)
-                : grid(i, jm);
+        double c_east = (mask(i, jp) == static_cast<int>(CellType::INSULATOR))
+                            ? grid(i, j)
+                            : grid(i, jp);
+        double c_west = (mask(i, jm) == static_cast<int>(CellType::INSULATOR))
+                            ? grid(i, j)
+                            : grid(i, jm);
 
         // ── SOR update ───────────────────────────────────────────────────────
         // omega=1 → Gauss-Seidel; 1<omega<2 → over-relaxation (faster).

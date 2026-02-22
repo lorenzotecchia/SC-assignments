@@ -3,6 +3,13 @@
 #include <string>
 #include <vector>
 
+//
+// Runs the 1D wave equation simulation for a given initial condition
+// and writes subsampled results to output/<prefix>_wave_data.txt.
+//
+// The simulation runs at full temporal resolution (t_num steps) for
+// accuracy, but only every save_every-th frame is stored for output.
+//
 void run_case(const std::string &prefix, int x_num, double x1, double x2,
               int t_num, double t1, double t2, double c,
               const std::vector<double> &x_vec,
