@@ -2,13 +2,13 @@
 #include <iostream>
 
 int main() {
-  int x_num = 401;
+  int x_num = 51;
   int y_num = x_num;
-  int t_num = 15001;
   int save_every = 100;
   double diffusion_constant = 1.0;
   double x_delta = 1.0 / (x_num - 1);
   double t_delta = x_delta * x_delta / diffusion_constant / 15.0;
+  int t_num = static_cast<int>(1.0 / t_delta);
 
   int t_save = (t_num + save_every - 1) / save_every;
   double t_delta_save = save_every * t_delta;
