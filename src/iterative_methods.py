@@ -163,15 +163,15 @@ def compare_to_analytical(c_gauss, c_SOR):
 @njit
 def Gauss_Seidel_numba(N, epsilon, max_iters):
     c_grid = np.zeros((N + 1, N + 1))
-    c_grid[0, :] = 1
-    c_grid[N, :] = 0
+    c_grid[:, 0] = 0   # y=0: c=0
+    c_grid[:, N] = 1   # y=1: c=1
     deltas = []
     for iter in range(max_iters):
         delta = 0.0
-        for i in range(1, N):
-            for j in range(N + 1):
-                i_plus = (i + 1) % (N + 1)
-                i_minus = (i - 1) % (N + 1)
+        for j in range(1, N):           # iterate over interior y
+            for i in range(N + 1):      # iterate over all x
+                i_plus = (i + 1) % (N + 1)   # periodic in x
+                i_minus = (i - 1) % (N + 1)  # periodic in x
                 old_c = c_grid[i, j]
                 c_grid[i, j] = 0.25 * (
                     c_grid[i_plus, j]
@@ -189,15 +189,15 @@ def Gauss_Seidel_numba(N, epsilon, max_iters):
 @njit
 def SOR_numba(omega, N, epsilon, max_iters):
     c_grid = np.zeros((N + 1, N + 1))
-    c_grid[0, :] = 1
-    c_grid[N, :] = 0
+    c_grid[:, 0] = 0   # y=0: c=0
+    c_grid[:, N] = 1   # y=1: c=1
     deltas = []
     for iter in range(max_iters):
         delta = 0.0
-        for i in range(1, N):
-            for j in range(N + 1):
-                i_plus = (i + 1) % (N + 1)
-                i_minus = (i - 1) % (N + 1)
+        for j in range(1, N):           # iterate over interior y
+            for i in range(N + 1):      # iterate over all x
+                i_plus = (i + 1) % (N + 1)   # periodic in x
+                i_minus = (i - 1) % (N + 1)  # periodic in x
                 old_c = c_grid[i, j]
                 c_grid[i, j] = (
                     omega
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     for r in results:
         print(f"iterative optimal omega: N={r['N']}, omega={r['omega']}, iters={r['iterations']}")
 
-    mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
+    mae_gauss, mae_SOR = compare_to_analytical(c_gauss, c_SOR)
     print(f"iterative mae gauss-seidel: {mae_gauss:.6f}")
     print(f"iterative mae sor:          {mae_SOR:.6f}")
 

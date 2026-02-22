@@ -18,7 +18,7 @@ plt.rcParams.update({
 
 # Allow importing from src/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from src.iterative_methods import SOR, Gauss_Seidel, N, epsilon, max_iters
+from src.iterative_methods import SOR_numba as SOR, Gauss_Seidel_numba as Gauss_Seidel, N, epsilon, max_iters
 
 # ── Load Jacobi data from C++ output ────────────────────────────────
 jacobi_grid = np.loadtxt("output/laplace_solution.txt")
@@ -126,6 +126,14 @@ ax3.grid(True, alpha=0.3)
 fig3.tight_layout()
 fig3.savefig("output/plots/laplace_crosssection.eps", format="eps")
 plt.close('all')
+
+# ── MAE vs analytical (c = y) ─────────────────────────────────────────────
+mae_jacobi = np.mean(np.abs(y_jacobi - c_mean_jacobi))
+mae_gs     = np.mean(np.abs(y_py - c_mean_gs))
+mae_sor    = np.mean(np.abs(y_py - c_mean_sor))
+print(f"laplace mae jacobi (C++):    {mae_jacobi:.6f}")
+print(f"laplace mae gauss-seidel:    {mae_gs:.6f}")
+print(f"laplace mae sor (omega=1.95): {mae_sor:.6f}")
 
 # ── K & L: Object visualisation ──────────────────────────────────────────────
 import numpy as np
