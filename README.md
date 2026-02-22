@@ -85,8 +85,5 @@ Snapshots at early / mid / late time:
 
 ## Contributors
 
-| Author | Commits |
-|---|---|
-| Lorenzo | 19 |
-| pentolame | 8 |
-| zzzimtzoe | 3 |
+[![git-fame](https://git-fame.cdcl.ml/gh/lorenzotecchia/SC-assignments)](https://github.com/lorenzotecchia/SC-assignments)
+
