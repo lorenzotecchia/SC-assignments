@@ -6,6 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.special import erfc
 
+plt.rcParams.update(
+    {
+        "font.size": 12,
+        "axes.titlesize": 13,
+        "axes.labelsize": 12,
+        "legend.fontsize": 11,
+        "xtick.labelsize": 11,
+        "ytick.labelsize": 11,
+    }
+)
+
+# TODO theoretical value does not act like simulated one :c
+
 
 # function to compute theoretical value
 def theoretical_value(y: np.ndarray, t: float, n: int, diffusion_constant: float):
@@ -66,7 +79,7 @@ plt.show()
 col_index = n_columns // 2
 
 # Create figure
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(8, 5))
 ax2 = ax.twinx()
 (line_theory,) = ax.plot([], [], lw=2, c="r", ls="-")
 scatter_data = ax2.scatter([], [], s=10)
@@ -77,6 +90,7 @@ ax2.set_ylim(0, 1)
 ax.set_xlabel("y")
 ax.set_ylabel("Concentration")
 ax.set_title(f"Concentration along column {col_index}")
+ax.grid(True, alpha=0.3)
 
 
 # Update function for animation
@@ -92,5 +106,25 @@ def update(frame):
 
 # Create animation
 ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=50)
-plt.savefig("output/plots/fd_diffusion.eps", format="eps")
+
+# ── 3 static snapshots (early / mid / late) ───────────────────────────
+n_frames = data.shape[0]
+snap_frames = [1, n_frames // 2, n_frames - 1]
+fig_snap, axes_snap = plt.subplots(1, 3, figsize=(14, 4))
+fig_snap.suptitle("Diffusion — concentration snapshots", fontsize=13)
+for ax_s, fr in zip(axes_snap, snap_frames):
+    t_val = fr * t_delta_save
+    ax_s.plot(y, theory_concentration[fr], lw=2, c="r", ls="-", label="theory")
+    ax_s.scatter(y, data[fr, :, col_index], s=10, label="simulation")
+    ax_s.set_xlim(0, 1)
+    ax_s.set_ylim(0, 1)
+    ax_s.set_xlabel("y")
+    ax_s.set_ylabel("Concentration")
+    ax_s.set_title(f"t = {t_val:.3f}")
+    ax_s.legend(fontsize=8)
+    ax_s.grid(True, alpha=0.3)
+fig_snap.tight_layout()
+fig_snap.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
+
+ani.save("output/plots/fd_diffusion.gif", writer="pillow", fps=20, dpi=80)
 plt.show()

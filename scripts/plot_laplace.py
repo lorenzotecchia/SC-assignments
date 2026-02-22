@@ -4,6 +4,15 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "axes.labelsize": 12,
+    "legend.fontsize": 11,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+})
+
 # Allow importing from src/
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from src.iterative_methods import SOR, Gauss_Seidel, N, epsilon, max_iters
@@ -31,7 +40,7 @@ print(f"SOR (omega=1.75) converged in {iter_sor175} iterations")
 # ── Figure 1: Heatmaps side-by-side ─────────────────────────────────
 fig1, axes = plt.subplots(1, 3, figsize=(16, 5))
 
-grids = [jacobi_grid, c_gs, c_sor195]
+grids = [jacobi_grid, c_gs.T, c_sor195.T]
 titles = [
     f"Jacobi (C++, {N_jacobi}x{N_jacobi})",
     f"Gauss-Seidel ({N+1}x{N+1})",
@@ -48,6 +57,7 @@ for ax, grid, title in zip(axes, grids, titles):
 
 fig1.suptitle("Steady-state Laplace solutions", fontsize=14, y=1.02)
 fig1.tight_layout()
+fig1.savefig("output/plots/laplace_heatmaps.eps", format="eps")
 
 # ── Figure 2: Convergence delta vs iteration k ──────────────────────
 fig2, ax2 = plt.subplots(figsize=(8, 5))
@@ -83,9 +93,10 @@ ax2.set_title(r"Convergence: $\delta$ vs iteration $k$")
 ax2.legend()
 ax2.grid(True, alpha=0.3)
 fig2.tight_layout()
+fig2.savefig("output/plots/laplace_convergence.eps", format="eps")
 
 # ── Figure 3: Cross-section vs analytical ────────────────────────────
-fig3, ax3 = plt.subplots(figsize=(7, 5))
+fig3, ax3 = plt.subplots(figsize=(8, 5))
 
 # Jacobi: x-averaged profile (C++ grid is N_jacobi x N_jacobi)
 y_jacobi = np.linspace(0, 1, N_jacobi)
@@ -111,7 +122,7 @@ ax3.set_title("Cross-section: x-averaged concentration vs analytical")
 ax3.legend()
 ax3.grid(True, alpha=0.3)
 fig3.tight_layout()
-plt.savefig("output/plots/laplace.eps", format="eps")
+fig3.savefig("output/plots/laplace_crosssection.eps", format="eps")
 plt.show()
 
 # ── K & L: Object visualisation ──────────────────────────────────────────────

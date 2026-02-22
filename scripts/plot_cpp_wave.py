@@ -3,6 +3,15 @@ import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
 
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "axes.labelsize": 12,
+    "legend.fontsize": 11,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+})
+
 x = np.loadtxt("output/x_data.txt")
 
 cases = [
@@ -37,6 +46,7 @@ for ax, wave_states, (_, title) in zip(axes_snap, data, cases):
     ax.set_ylim(ymin * 1.1, ymax * 1.1)
     ax.set_xlabel("x")
     ax.set_title(title, fontsize=10)
+    ax.grid(True, alpha=0.3)
 
     for t_snap, color in zip(snapshot_times, colors):
         frame_idx = int(round(t_snap / t2 * (t_frames - 1)))
@@ -48,6 +58,8 @@ for ax, wave_states, (_, title) in zip(axes_snap, data, cases):
 axes_snap[0].set_ylabel(r"$\Psi(x, t)$")
 axes_snap[2].legend(loc="upper right", fontsize=8)
 fig_snap.tight_layout()
+fig_snap.savefig("output/plots/cpp_wave_snapshots.eps", format="eps")
+fig_snap.savefig("output/plots/cpp_wave_snapshots.png", dpi=150)
 
 # ── Animation ─────────────────────────────────────────────────────────
 
@@ -60,6 +72,7 @@ for ax, wave_states, (_, title) in zip(axes_anim, data, cases):
     ax.set_ylim(ymin, ymax)
     ax.set_xlabel("x")
     ax.set_title(title, fontsize=10)
+    ax.grid(True, alpha=0.3)
     (line,) = ax.plot([], [], lw=2)
     lines.append((line, wave_states))
 
@@ -83,5 +96,5 @@ ani = animation.FuncAnimation(
 )
 
 fig_anim.tight_layout()
-plt.savefig("output/plots/cpp_wave.eps", format="eps")
+ani.save("output/plots/cpp_wave.gif", writer="pillow", fps=30, dpi=80)
 plt.show()

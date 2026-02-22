@@ -3,6 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import ndarray
 
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "axes.labelsize": 12,
+    "legend.fontsize": 11,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+})
+
 
 def update_wave(x_current: ndarray, x_old: ndarray, const: float) -> ndarray:
     """
@@ -61,13 +70,16 @@ def simulate_wave(
 
 
 def animate(wave_states, delta_x):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(8, 5))
     time_steps = wave_states.shape[0]
     n_points = int(wave_states.shape[1])
     x = delta_x * np.array(range(n_points))
 
     ax.set_xlim(x.min(), x.max())
     ax.set_ylim(wave_states.min(), wave_states.max())
+    ax.set_xlabel("x")
+    ax.set_ylabel(r"$\Psi(x, t)$")
+    ax.grid(True, alpha=0.3)
 
     (line,) = ax.plot([], [], lw=3)
 
@@ -84,5 +96,5 @@ def animate(wave_states, delta_x):
     ani = animation.FuncAnimation(
         fig=fig, func=update, init_func=init, frames=time_steps, interval=30
     )
-    plt.savefig("output/plots/wave_sim.eps", fomrat="eps")
+    ani.save("output/plots/wave_sim.gif", writer="pillow", fps=30, dpi=80)
     plt.show()

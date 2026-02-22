@@ -2,6 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit
 
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "axes.labelsize": 12,
+    "legend.fontsize": 11,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+})
+
 max_iters = 10000
 epsilon = 1e-5
 N = 50
@@ -132,15 +141,17 @@ def compare_to_analytical(c_gauss, c_SOR):
     mae_SOR = np.mean(np.abs(y - c_mean_SOR))
 
     # plot Gauss-Seidel, SOR, and analytical
-    plt.plot(y, c_mean_gauss, "--", label="Gauss-Seidel")
-    plt.plot(y, c_mean_SOR, ":", label="SOR")
-    plt.plot(y, y, label="analytical")
-
-    plt.legend()
-    plt.xlabel("y")
-    plt.ylabel("concentration")
-    plt.title("Comparing Numerical and Analytical Solution")
-    plt.savefig("output/plots/y_vs_conc.eps", format="eps")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.plot(y, c_mean_gauss, "--", label="Gauss-Seidel")
+    ax.plot(y, c_mean_SOR, ":", label="SOR")
+    ax.plot(y, y, label="Analytical")
+    ax.set_xlabel("$y$")
+    ax.set_ylabel("Concentration")
+    ax.set_title("Comparing Numerical and Analytical Solution")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig("output/plots/y_vs_conc.eps", format="eps")
     plt.close()
 
     return mae_gauss, mae_SOR
@@ -296,14 +307,46 @@ print("\n########## I ##########\n")
 omega = 1.75
 _, _, deltas_SOR_175 = SOR_numba(omega, N, epsilon, max_iters)
 
-plt.semilogx(deltas_gauss, label="Gauss-Seidel")
-plt.semilogx(deltas_SOR, "--", label="SOR $\omega$=1.95")
-plt.semilogx(deltas_SOR_175, ":", label="SOR $\omega$=1.75")
-plt.legend()
-plt.xlabel("Iterations k")
-plt.ylabel("$\delta$")
-plt.title("Behaviour of convergence measure $\delta$")
-plt.savefig("output/plots/convergence.eps", format="eps")
+fig, ax = plt.subplots(figsize=(8, 5))
+
+try:
+    jacobi_deltas = np.loadtxt("output/laplace_deltas.txt")
+    ax.semilogy(
+        range(1, len(jacobi_deltas) + 1),
+        jacobi_deltas,
+        label=f"Jacobi (C++, {len(jacobi_deltas)} iters)",
+        color="#4CAF50",
+    )
+except FileNotFoundError:
+    pass
+
+ax.semilogy(
+    range(1, len(deltas_gauss) + 1),
+    deltas_gauss,
+    label=f"Gauss-Seidel ({len(deltas_gauss)} iters)",
+    color="#2196F3",
+)
+ax.semilogy(
+    range(1, len(deltas_SOR) + 1),
+    deltas_SOR,
+    "--",
+    label=r"SOR $\omega$=1.95" + f" ({len(deltas_SOR)} iters)",
+    color="#FF5722",
+)
+ax.semilogy(
+    range(1, len(deltas_SOR_175) + 1),
+    deltas_SOR_175,
+    ":",
+    label=r"SOR $\omega$=1.75" + f" ({len(deltas_SOR_175)} iters)",
+    color="#9C27B0",
+)
+ax.set_xlabel("Iteration $k$")
+ax.set_ylabel(r"$\delta$ (max absolute change)")
+ax.set_title(r"Convergence: $\delta$ vs iteration $k$")
+ax.legend()
+ax.grid(True, alpha=0.3)
+fig.tight_layout()
+fig.savefig("output/plots/convergence.eps", format="eps")
 plt.close()
 
 
