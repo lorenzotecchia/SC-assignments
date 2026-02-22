@@ -1,4 +1,5 @@
 import json
+import logging
 
 import matplotlib.animation as animation
 import matplotlib.cm as cm
@@ -7,16 +8,16 @@ from matplotlib.lines import Line2D
 import numpy as np
 from scipy.special import erfc
 
-plt.rcParams.update(
-    {
-        "font.size": 12,
-        "axes.titlesize": 13,
-        "axes.labelsize": 12,
-        "legend.fontsize": 11,
-        "xtick.labelsize": 11,
-        "ytick.labelsize": 11,
-    }
-)
+logging.getLogger("matplotlib.backends.backend_ps").setLevel(logging.ERROR)
+
+plt.rcParams.update({
+    "font.size": 12,
+    "axes.titlesize": 13,
+    "axes.labelsize": 12,
+    "legend.fontsize": 11,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11,
+})
 
 
 # function to compute theoretical value
@@ -92,66 +93,56 @@ def update(frame):
 # Create animation
 ani = animation.FuncAnimation(fig, update, frames=data.shape[0], blit=True, interval=50)
 
-# ── 3 static snapshots ────────────────────────────────────────────────
+# ── Static snapshots ──────────────────────────────────────────────────
 times_to_plot = np.array([0, 0.001, 0.01, 0.1, 1.0])
-indices_to_plot = np.floor(times_to_plot / t_delta_save).astype(int)
+indices_to_plot = np.clip(
+    np.floor(times_to_plot / t_delta_save).astype(int), 0, int(t_save) - 1
+)
+colors = cm.viridis(np.linspace(0, 1, len(times_to_plot)))
 
-plt.figure()
+fig_snap, ax_snap = plt.subplots(figsize=(8, 5))
 
-for k, idx in enumerate(indices_to_plot):
-    plt.plot(y, theory_concentration[idx], lw=2, c="r", ls="-")
-    plt.scatter(y, data_mid[idx], s=10)
+for k, (idx, color) in enumerate(zip(indices_to_plot, colors)):
+    t_val = idx * t_delta_save
+    ax_snap.plot(y, theory_concentration[idx], lw=2, color=color, ls="-")
+    ax_snap.scatter(y, data_mid[idx], s=10, color=color, label=f"t = {t_val:g}s")
 
-    # annotate near where the curve crosses c = 0.5
-    y_label_idx = np.argmin(np.abs(theory_concentration[idx] - 0.5))
-    plt.text(
-        y[y_label_idx] + 0.01,
-        0.5 + 0.03,
-        f"t={times_to_plot[k]:g}s",
-        fontsize=8,
-        color="k",
-        va="bottom",
-        ha="left",
-        clip_on=False,
-    )
-
-handles = [
-    Line2D([0], [0], color="r", lw=2, linestyle="-", label="Theory"),
-    Line2D(
-        [0],
-        [0],
-        marker="o",
-        linestyle="None",
-        color="C0",
-        markersize=5,
-        label="Simulation",
-    ),
+handles_type = [
+    Line2D([0], [0], color="k", lw=2, linestyle="-", label="Theory"),
+    Line2D([0], [0], marker="o", linestyle="None", color="k", markersize=5, label="Simulation"),
 ]
-plt.legend(handles=handles, fontsize=8)
-plt.xlim(0, 1)
-plt.ylim(0, 1)
-plt.title("Diffusion — concentration snapshots")
-plt.xlabel("y")
-plt.ylabel("Concentration")
-plt.legend(fontsize=8)
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.subplots_adjust(right=0.82)
-plt.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
-plt.close()
+handles_time = [
+    Line2D([0], [0], marker="o", linestyle="-", color=colors[k], lw=2, markersize=5,
+           label=f"t = {times_to_plot[k]:g}s")
+    for k in range(len(times_to_plot))
+]
+ax_snap.legend(handles=handles_type + handles_time, loc="upper left", fontsize=9)
+ax_snap.set_xlim(0, 1)
+ax_snap.set_ylim(0, 1)
+ax_snap.set_title("Diffusion — Concentration Snapshots", fontsize=14)
+ax_snap.set_xlabel("$y$")
+ax_snap.set_ylabel("Concentration $c(y,t)$")
+ax_snap.grid(True, alpha=0.3)
+fig_snap.tight_layout()
+fig_snap.savefig("output/plots/fd_diffusion_snapshots.eps", format="eps")
+fig_snap.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
+plt.close(fig_snap)
 
-# ── 4 error plot ──────────────────────────────────────────────────────
+# ── Error plot ────────────────────────────────────────────────────────
 error = np.abs(theory_concentration - data_mid).sum(axis=1)
 
-plt.figure()
-plt.scatter(time_data, error, s=10)
-plt.title("Diffusion — absolute error over time")
-plt.xlim(0, 1)
-plt.xlabel("time")
-plt.ylabel("error (abs)")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig("output/plots/fd_diffusion_error.png", dpi=150)
+fig_err, ax_err = plt.subplots(figsize=(8, 5))
+# Skip t=0 to avoid log(0) issues
+valid = time_data > 0
+ax_err.semilogy(time_data[valid], error[valid], "o-", ms=3, lw=1.5, color="#2196F3")
+ax_err.set_title("Diffusion — Absolute Error Over Time", fontsize=14)
+ax_err.set_xlabel("Time $t$")
+ax_err.set_ylabel("Error (sum of absolute differences)")
+ax_err.grid(True, alpha=0.3)
+fig_err.tight_layout()
+fig_err.savefig("output/plots/fd_diffusion_error.eps", format="eps")
+fig_err.savefig("output/plots/fd_diffusion_error.png", dpi=150)
+plt.close(fig_err)
 
 ani.save("output/plots/fd_diffusion.gif", writer="pillow", fps=20, dpi=80)
 plt.close("all")
