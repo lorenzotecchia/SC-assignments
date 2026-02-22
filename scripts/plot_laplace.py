@@ -1,8 +1,11 @@
+import logging
 import os
 import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+logging.getLogger("matplotlib.backends.backend_ps").setLevel(logging.ERROR)
 
 plt.rcParams.update({
     "font.size": 12,
@@ -23,19 +26,18 @@ jacobi_deltas = np.loadtxt("output/laplace_deltas.txt")
 N_jacobi = jacobi_grid.shape[0]
 
 # ── Run Python solvers (same grid size as iterative_methods: N+1 points) ─
-print("Compiling Numba JIT functions...")
+print("laplace: compiling numba jit...")
 _ = Gauss_Seidel(5, 1e-2, 10)
 _ = SOR(1.5, 5, 1e-2, 10)
-print("Done.\n")
 
 c_gs, iter_gs, deltas_gs = Gauss_Seidel(N, epsilon, max_iters)
-print(f"Gauss-Seidel converged in {iter_gs} iterations")
+print(f"laplace gauss-seidel: {iter_gs} iters")
 
 c_sor195, iter_sor195, deltas_sor195 = SOR(1.95, N, epsilon, max_iters)
-print(f"SOR (omega=1.95) converged in {iter_sor195} iterations")
+print(f"laplace sor (omega=1.95): {iter_sor195} iters")
 
 c_sor175, iter_sor175, deltas_sor175 = SOR(1.75, N, epsilon, max_iters)
-print(f"SOR (omega=1.75) converged in {iter_sor175} iterations")
+print(f"laplace sor (omega=1.75): {iter_sor175} iters")
 
 # ── Figure 1: Heatmaps side-by-side ─────────────────────────────────
 fig1, axes = plt.subplots(1, 3, figsize=(16, 5))
@@ -123,7 +125,7 @@ ax3.legend()
 ax3.grid(True, alpha=0.3)
 fig3.tight_layout()
 fig3.savefig("output/plots/laplace_crosssection.eps", format="eps")
-plt.show()
+plt.close('all')
 
 # ── K & L: Object visualisation ──────────────────────────────────────────────
 import numpy as np
@@ -185,7 +187,7 @@ for ax, (grid, mask, title) in zip(axes, datasets):
 fig.suptitle("Laplace steady-state solutions with objects", fontsize=13, y=1.02)
 fig.tight_layout()
 plt.savefig("output/plots/laplace_objects_heatmaps.eps", format="eps")
-plt.show()
+plt.close('all')
 
 # ── Figure K-2: Omega sweep ───────────────────────────────────────────────────
 fig2, ax2 = plt.subplots(figsize=(8, 5))
@@ -197,4 +199,4 @@ ax2.set_title(r"Effect of $\omega$ on convergence (K)")
 ax2.legend(); ax2.grid(True, alpha=0.3)
 fig2.tight_layout()
 plt.savefig("output/plots/laplace_omega_sweep.eps", format="eps")
-plt.show()
+plt.close('all')

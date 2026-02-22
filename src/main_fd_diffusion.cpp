@@ -15,7 +15,7 @@ int main() {
 
   double coefficient = t_delta * diffusion_constant / (x_delta * x_delta);
 
-  std::cout << "the coefficient is: " << coefficient << '\n';
+  std::cout << "diffusion: coefficient = " << coefficient << '\n';
 
   double zero = 0;
   std::vector<std::vector<double>> initial_state(

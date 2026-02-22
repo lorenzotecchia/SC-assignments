@@ -127,4 +127,4 @@ fig_snap.tight_layout()
 fig_snap.savefig("output/plots/fd_diffusion_snapshots.png", dpi=150)
 
 ani.save("output/plots/fd_diffusion.gif", writer="pillow", fps=20, dpi=80)
-plt.show()
+plt.close('all')

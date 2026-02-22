@@ -30,16 +30,14 @@ int main() {
 
   // ── 1. Baseline Jacobi (existing, unchanged) ────────────────────────────
   auto jres = jacobi_solve(N, tolerance, max_iter, apply_boundary);
-  std::cout << "Jacobi: " << jres.iterations << " iters, "
-            << "residual=" << jres.final_residual << "\n";
+  std::cout << "laplace jacobi: " << jres.iterations << " iters, residual=" << jres.final_residual << "\n";
   write_matrix("output/laplace_solution.txt", jres.solution);
   write_deltas("output/laplace_deltas.txt", jres.deltas);
 
   // ── 2. Baseline SOR (no objects) ────────────────────────────────────────
   Eigen::MatrixXi mask_empty = Eigen::MatrixXi::Zero(N, N);
   auto sres = sor_solve(N, omega, tolerance, max_iter, mask_empty, apply_boundary);
-  std::cout << "SOR (no objects): " << sres.iterations << " iters, "
-            << "residual=" << sres.final_residual << "\n";
+  std::cout << "laplace sor (baseline): " << sres.iterations << " iters, residual=" << sres.final_residual << "\n";
   write_matrix("output/laplace_sor_baseline.txt", sres.solution);
   write_deltas("output/laplace_sor_baseline_deltas.txt", sres.deltas);
 
@@ -52,8 +50,7 @@ int main() {
             CellType::SINK);
 
   auto kres = sor_solve(N, omega, tolerance, max_iter, mask_sink, apply_boundary);
-  std::cout << "SOR (sinks): " << kres.iterations << " iters, "
-            << "residual=" << kres.final_residual << "\n";
+  std::cout << "laplace sor (sinks): " << kres.iterations << " iters, residual=" << kres.final_residual << "\n";
   write_matrix("output/laplace_sink.txt", kres.solution);
   write_deltas("output/laplace_sink_deltas.txt", kres.deltas);
 
@@ -72,7 +69,7 @@ int main() {
       auto r_sink  = sor_solve(N, w, tolerance, max_iter, mask_sink,  apply_boundary);
       out << w << " " << r_empty.iterations << " " << r_sink.iterations << "\n";
     }
-    std::cout << "Omega sweep written.\n";
+    std::cout << "laplace omega sweep: done\n";
   }
 
   // ── 4. L: Insulator ─────────────────────────────────────────────────────
@@ -82,8 +79,7 @@ int main() {
             CellType::INSULATOR);
 
   auto lres = sor_solve(N, omega, tolerance, max_iter, mask_ins, apply_boundary);
-  std::cout << "SOR (insulator): " << lres.iterations << " iters, "
-            << "residual=" << lres.final_residual << "\n";
+  std::cout << "laplace sor (insulator): " << lres.iterations << " iters, residual=" << lres.final_residual << "\n";
   write_matrix("output/laplace_insulator.txt", lres.solution);
   write_deltas("output/laplace_insulator_deltas.txt", lres.deltas);
   {

@@ -245,172 +245,90 @@ def optimal_omega_numba(omega_min, omega_max, step):
 # ----------numba output -----------
 
 
-# ----------Gauss-Seidel -----------
+if __name__ == "__main__":
+    # ----------Gauss-Seidel -----------
 
-print("\n########## H ##########\n")
-c_gauss, iter_gauss, deltas_gauss = Gauss_Seidel_numba(N, epsilon, max_iters)
-print("\n-------- Gauss-Seidel --------\n")
-print("Solution using Gauss-Seidel\n", c_gauss)
-print("\nNumber of iterations for Gauss-Seidel: ", iter_gauss)
+    print("iterative: gauss-seidel...")
+    c_gauss, iter_gauss, deltas_gauss = Gauss_Seidel_numba(N, epsilon, max_iters)
+    print(f"iterative gauss-seidel: {iter_gauss} iters")
 
-# heatmap
-plt.figure(figsize=(6, 5))
-plt.imshow(c_gauss)
-plt.colorbar(label="Concentration")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.title("Numerical Solution using Gauss-Seidel")
-plt.savefig("output/plots/numerical_sol_gauss", format="eps")
-plt.close()
+    plt.figure(figsize=(6, 5))
+    plt.imshow(c_gauss)
+    plt.colorbar(label="Concentration")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Numerical Solution using Gauss-Seidel")
+    plt.savefig("output/plots/numerical_sol_gauss", format="eps")
+    plt.close()
 
-# -------------- SOR -------------
-omega = 1.95
-c_SOR, iter_SOR, deltas_SOR = SOR_numba(omega, N, epsilon, max_iters)
-print("\n-------- SOR --------\n")
-print("Solution using SOR\n", c_SOR)
-print("\nNumber of iterations for SOR: ", iter_SOR)
+    print("iterative: sor...")
+    omega = 1.95
+    c_SOR, iter_SOR, deltas_SOR = SOR_numba(omega, N, epsilon, max_iters)
+    print(f"iterative sor (omega={omega}): {iter_SOR} iters")
 
-# heatmap
-plt.figure(figsize=(6, 5))
-plt.imshow(c_SOR, cmap="Purples")
-plt.colorbar(label="Concentration")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.title("Numerical Solution using SOR")
-plt.savefig("output/plots/sol_sor.eps", format="eps")
-plt.close()
+    plt.figure(figsize=(6, 5))
+    plt.imshow(c_SOR, cmap="Purples")
+    plt.colorbar(label="Concentration")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.title("Numerical Solution using SOR")
+    plt.savefig("output/plots/sol_sor.eps", format="eps")
+    plt.close()
 
-# -------------- optimal omega ------------
-omega_min = 1.7
-omega_max = 2
-step = 0.1
-results = optimal_omega_numba(omega_min, omega_max, step)
-print("\n-------- Find optimal omega for SOR --------\n")
-for r in results:
-    print(
-        f"For N={r["N"]}: optimal omega = {r["omega"]} with {r["iterations"]} iterations"
-    )
+    omega_min = 1.7
+    omega_max = 2
+    step = 0.1
+    results = optimal_omega_numba(omega_min, omega_max, step)
+    for r in results:
+        print(f"iterative optimal omega: N={r['N']}, omega={r['omega']}, iters={r['iterations']}")
 
+    mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
+    print(f"iterative mae gauss-seidel: {mae_gauss:.6f}")
+    print(f"iterative mae sor:          {mae_SOR:.6f}")
 
-# -----------analytical comparison ------------
+    omega = 1.75
+    _, _, deltas_SOR_175 = SOR_numba(omega, N, epsilon, max_iters)
 
-print("\n-------- Compare to analytical results --------\n")
-mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
-print("Mean absolute error of Gauss-Seidel: ", mae_gauss)
-print("Mean absolute error of SOR: ", mae_SOR)
+    fig, ax = plt.subplots(figsize=(8, 5))
 
+    try:
+        jacobi_deltas = np.loadtxt("output/laplace_deltas.txt")
+        ax.semilogy(
+            range(1, len(jacobi_deltas) + 1),
+            jacobi_deltas,
+            label=f"Jacobi (C++, {len(jacobi_deltas)} iters)",
+            color="#4CAF50",
+        )
+    except FileNotFoundError:
+        pass
 
-print("\n########## I ##########\n")
-
-# Show how delta depends on the number of iterations k
-
-omega = 1.75
-_, _, deltas_SOR_175 = SOR_numba(omega, N, epsilon, max_iters)
-
-fig, ax = plt.subplots(figsize=(8, 5))
-
-try:
-    jacobi_deltas = np.loadtxt("output/laplace_deltas.txt")
     ax.semilogy(
-        range(1, len(jacobi_deltas) + 1),
-        jacobi_deltas,
-        label=f"Jacobi (C++, {len(jacobi_deltas)} iters)",
-        color="#4CAF50",
+        range(1, len(deltas_gauss) + 1),
+        deltas_gauss,
+        label=f"Gauss-Seidel ({len(deltas_gauss)} iters)",
+        color="#2196F3",
     )
-except FileNotFoundError:
-    pass
-
-ax.semilogy(
-    range(1, len(deltas_gauss) + 1),
-    deltas_gauss,
-    label=f"Gauss-Seidel ({len(deltas_gauss)} iters)",
-    color="#2196F3",
-)
-ax.semilogy(
-    range(1, len(deltas_SOR) + 1),
-    deltas_SOR,
-    "--",
-    label=r"SOR $\omega$=1.95" + f" ({len(deltas_SOR)} iters)",
-    color="#FF5722",
-)
-ax.semilogy(
-    range(1, len(deltas_SOR_175) + 1),
-    deltas_SOR_175,
-    ":",
-    label=r"SOR $\omega$=1.75" + f" ({len(deltas_SOR_175)} iters)",
-    color="#9C27B0",
-)
-ax.set_xlabel("Iteration $k$")
-ax.set_ylabel(r"$\delta$ (max absolute change)")
-ax.set_title(r"Convergence: $\delta$ vs iteration $k$")
-ax.legend()
-ax.grid(True, alpha=0.3)
-fig.tight_layout()
-fig.savefig("output/plots/convergence.eps", format="eps")
-plt.close()
+    ax.semilogy(
+        range(1, len(deltas_SOR) + 1),
+        deltas_SOR,
+        "--",
+        label=r"SOR $\omega$=1.95" + f" ({len(deltas_SOR)} iters)",
+        color="#FF5722",
+    )
+    ax.semilogy(
+        range(1, len(deltas_SOR_175) + 1),
+        deltas_SOR_175,
+        ":",
+        label=r"SOR $\omega$=1.75" + f" ({len(deltas_SOR_175)} iters)",
+        color="#9C27B0",
+    )
+    ax.set_xlabel("Iteration $k$")
+    ax.set_ylabel(r"$\delta$ (max absolute change)")
+    ax.set_title(r"Convergence: $\delta$ vs iteration $k$")
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig("output/plots/convergence.eps", format="eps")
+    plt.close()
 
 
-"""
-print("\n########## H ##########\n")
-c_gauss, iter_gauss, deltas_gauss = Gauss_Seidel(N, epsilon, max_iters)
-print("\n-------- Gauss-Seidel --------\n")
-print("Solution using Gauss-Seidel\n", c_gauss)
-print("\nNumber of iterations for Gauss-Seidel: ", iter_gauss)
-
-# heatmap
-plt.figure(figsize=(6,5))
-plt.imshow(c_gauss, cmap='RdPu')
-plt.colorbar(label='Concentration')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Numerical Solution using Gauss-Seidel')
-plt.show()
-
-
-omega = 1.95
-c_SOR, iter_SOR , deltas_SOR= SOR(omega, N, epsilon, max_iters)
-print("\n-------- SOR --------\n")
-print("Solution using SOR\n", c_SOR )
-print("\nNumber of iterations for SOR: ", iter_SOR)
-
-# heatmap
-plt.figure(figsize=(6,5))
-plt.imshow(c_SOR, cmap='RdPu')
-plt.colorbar(label='Concentration')
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Numerical Solution using SOR')
-plt.show()
-
-
-omega_min = 1.7
-omega_max = 2
-step = 0.1
-results = optimal_omega(omega_min, omega_max, step)
-print("\n-------- Find optimal omega for SOR --------\n")
-for r in results:
-    print(f"For N={r["N"]}: optimal omega = {r["omega"]} with {r["iterations"]} iterations")
-
-
-print("\n-------- Compare to analytical results --------\n")
-mae_gauss, mae_SOR = compare_to_analytical(c_SOR, c_gauss)
-print("Mean absolute error of Gauss-Seidel: ", mae_gauss)
-print("Mean absolute error of SOR: ", mae_SOR)
-
-
-print("\n########## I ##########\n")
-
-# Show how delta depends on the number of iterations k
-
-omega = 1.75
-_, _, deltas_SOR_175= SOR(omega, N, epsilon, max_iters)
-
-plt.semilogx(deltas_gauss, label="Gauss-Seidel", color="royalblue")
-plt.semilogx(deltas_SOR, label="SOR $\omega$=1.95", color="hotpink")
-plt.semilogx(deltas_SOR_175, label="SOR $\omega$=1.75", color="purple")
-plt.legend()
-plt.xlabel("Iterations k")
-plt.ylabel("$\delta$")
-plt.title("Behaviour of convergence measure $\delta$")
-plt.show()
-"""

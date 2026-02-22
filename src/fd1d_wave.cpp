@@ -167,7 +167,7 @@ std::vector<double> run_case_leapfrog(const std::string &prefix, int x_num,
     v_old = v_cur;
   }
 
-  r8mat_write("output/" + prefix + "_wave_data.txt", x_num, t_save, u_mat);
+  r8mat_write("output/" + prefix + "_leapfrog_wave_data.txt", x_num, t_save, u_mat);
   return u_mat;
 }
 
@@ -220,14 +220,10 @@ double fd1d_wave_alpha(int x_num, double x1, double x2, int t_num, double t1,
   auto x_delta = (x2 - x1) / static_cast<double>(x_num - 1);
   auto alpha = c * t_delta / x_delta;
 
-  std::cout << "\n";
-  std::cout << "  Stability condition ALPHA = C * DT / DX = " << alpha << "\n";
+  std::cout << "wave: alpha = " << alpha << "\n";
 
   if (1.0 < fabs(alpha)) {
-    std::cerr << "\n";
-    std::cerr << "FD1D_WAVE_ALPHA - Warning!\n";
-    std::cerr << "  The stability condition |ALPHA| <= 1 fails.\n";
-    std::cerr << "  Computed results are liable to be inaccurate.\n";
+    std::cerr << "wave: warning: stability condition |alpha| <= 1 fails, results may be inaccurate\n";
   }
 
   return alpha;

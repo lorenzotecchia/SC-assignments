@@ -18,24 +18,27 @@ all: plot-wave plot-laplace plot-diffusion
 
 WAVE_BIN   := wave_sim
 WAVE_SRCS  := $(SRC_DIR)/main.cpp $(SRC_DIR)/fd1d_wave.cpp
-WAVE_DATA  := $(OUT_DIR)/case1_wave_data.txt \
-              $(OUT_DIR)/case2_wave_data.txt \
-              $(OUT_DIR)/case3_wave_data.txt
+WAVE_DATA  := $(OUT_DIR)/case1_leapfrog_wave_data.txt \
+              $(OUT_DIR)/case2_leapfrog_wave_data.txt \
+              $(OUT_DIR)/case3_leapfrog_wave_data.txt
 
 wave: plot-wave
 
 build-wave: $(WAVE_BIN)
 
 $(WAVE_BIN): $(WAVE_SRCS) $(SRC_DIR)/fd1d_wave.hpp
-	$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -o $@ $(WAVE_SRCS)
+	@echo "build: wave_sim"
+	@$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -o $@ $(WAVE_SRCS)
 
 $(WAVE_DATA): $(WAVE_BIN) | $(OUT_DIR)
-	./$(WAVE_BIN)
+	@echo "run:   wave_sim"
+	@./$(WAVE_BIN)
 
 run-wave: $(WAVE_DATA)
 
 plot-wave: $(WAVE_DATA)
-	$(PYTHON) scripts/plot_cpp_wave.py
+	@echo "plot:  wave"
+	@$(PYTHON) scripts/plot_cpp_wave.py
 
 # ── Laplace equation (Jacobi with OpenMP) ─────────────────────────────
 
@@ -47,7 +50,8 @@ laplace: plot-laplace
 build-laplace: $(LAPLACE_BIN)
 
 $(LAPLACE_BIN): $(LAPLACE_SRCS) $(SRC_DIR)/laplace.hpp
-	$(CXX_OMP) $(CXXFLAGS) -fopenmp $(EIGEN_INC) -I$(SRC_DIR) -o $@ $(LAPLACE_SRCS)
+	@echo "build: laplace_sim"
+	@$(CXX_OMP) $(CXXFLAGS) -fopenmp $(EIGEN_INC) -I$(SRC_DIR) -o $@ $(LAPLACE_SRCS)
 
 LAPLACE_OUTPUTS := $(OUT_DIR)/laplace_solution.txt \
                    $(OUT_DIR)/laplace_sink.txt \
@@ -55,12 +59,14 @@ LAPLACE_OUTPUTS := $(OUT_DIR)/laplace_solution.txt \
                    $(OUT_DIR)/laplace_omega_sweep.txt
 
 $(LAPLACE_OUTPUTS): $(LAPLACE_BIN) | $(OUT_DIR)
-	./$(LAPLACE_BIN)
+	@echo "run:   laplace_sim"
+	@./$(LAPLACE_BIN)
 
 run-laplace: $(LAPLACE_OUTPUTS)
 
 plot-laplace: $(OUT_DIR)/laplace_solution.txt
-	$(PYTHON) scripts/plot_laplace.py
+	@echo "plot:  laplace"
+	@$(PYTHON) scripts/plot_laplace.py
 
 # ── Diffusion equation (OpenMP) ───────────────────────────────────────
 
@@ -72,22 +78,26 @@ diffusion: plot-diffusion
 build-diffusion: $(DIFFUSION_BIN)
 
 $(DIFFUSION_BIN): $(DIFFUSION_SRCS) $(SRC_DIR)/fd_diffusion.hpp
-	$(CXX_OMP) $(CXXFLAGS) -fopenmp -I$(SRC_DIR) -o $@ $(DIFFUSION_SRCS)
+	@echo "build: diffusion_sim"
+	@$(CXX_OMP) $(CXXFLAGS) -fopenmp -I$(SRC_DIR) -o $@ $(DIFFUSION_SRCS)
 
 $(OUT_DIR)/fd_diffusion_data.txt: $(DIFFUSION_BIN) | $(OUT_DIR)
-	./$(DIFFUSION_BIN)
+	@echo "run:   diffusion_sim"
+	@./$(DIFFUSION_BIN)
 
 run-diffusion: $(OUT_DIR)/fd_diffusion_data.txt
 
 plot-diffusion: $(OUT_DIR)/fd_diffusion_data.txt
-	$(PYTHON) scripts/fd_diffusion.py
+	@echo "plot:  diffusion"
+	@$(PYTHON) scripts/fd_diffusion.py
 
 # ── Shared ────────────────────────────────────────────────────────────
 
 $(OUT_DIR):
-	mkdir -p $(OUT_DIR)
-	mkdir -p $(OUT_PLOT_DIR)
+	@mkdir -p $(OUT_DIR)
+	@mkdir -p $(OUT_PLOT_DIR)
 
 clean:
-	rm -f $(WAVE_BIN) $(LAPLACE_BIN) $(DIFFUSION_BIN)
-	rm -f $(OUT_DIR)/*.txt
+	@rm -f $(WAVE_BIN) $(LAPLACE_BIN) $(DIFFUSION_BIN)
+	@rm -f $(OUT_DIR)/*.txt
+	@echo "clean: done"

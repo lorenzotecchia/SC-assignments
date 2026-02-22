@@ -1,7 +1,10 @@
+import logging
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
+
+logging.getLogger("matplotlib.backends.backend_ps").setLevel(logging.ERROR)
 
 plt.rcParams.update({
     "font.size": 12,
@@ -97,4 +100,4 @@ ani = animation.FuncAnimation(
 
 fig_anim.tight_layout()
 ani.save("output/plots/cpp_wave.gif", writer="pillow", fps=30, dpi=80)
-plt.show()
+plt.close('all')
