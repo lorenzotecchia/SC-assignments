@@ -1,0 +1,7 @@
+{
+  "diffusion_constant": 1,
+  "x_num": 51,
+  "t_save": 375,
+  "x_delta": 0.02,
+  "t_delta_save": 0.00266667
+}
