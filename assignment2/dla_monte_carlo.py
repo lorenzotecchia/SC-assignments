@@ -14,17 +14,15 @@ Monte Carlo simulation of Diffusion-Limited Aggreration (DLA)
 boundaries:
 - periodic boundary for left and right
 - closed boundary for top and bottom
-
-grid size: 100 x 100
 '''
 
 
 NEIGHBORS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
 
-grid_len = 50
+grid_len = 10
 max_steps = 20
-max_mass = 100
+max_mass = 10
 seed = 7
 
 
@@ -122,20 +120,6 @@ def dla_simulation():
     return cluster
 
 
-def print_cluster(cluster):
-    # convert set into matrix
-    cluster_grid = np.zeros((grid_len, grid_len))
-    for (i, j) in cluster:
-        cluster_grid[i, j] = 1
-    
-    # make plot
-    plt.figure(figsize=(6, 6))
-    plt.imshow(cluster_grid, origin="upper", cmap="inferno")
-    plt.title("DLA Cluster")
-    plt.axis("off")
-    plt.show()
-
-
 def plot_cluster(cluster):
     '''cluster_grid = np.zeros((grid_len, grid_len))
     for (i, j) in cluster:
@@ -146,7 +130,7 @@ def plot_cluster(cluster):
     history = np.linspace(0, 1, len(cluster))
 
     plt.figure(figsize=(6, 6))
-    plt.scatter(xs, ys, s=1, c=history, cmap='cool', vmin=0, vmax=1)
+    plt.scatter(xs, ys, s=20, c=history, cmap='cool', vmin=0, vmax=1)
     plt.gca().set_aspect("equal", "box")
     plt.axis("off")
     plt.show()
@@ -154,8 +138,4 @@ def plot_cluster(cluster):
 
 if __name__ == "__main__":
     cluster = dla_simulation()
-    #print_cluster(cluster)
     plot_cluster(cluster)
-    
-
-        
