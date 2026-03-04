@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 '''
@@ -20,9 +21,11 @@ grid size: 100 x 100
 
 NEIGHBORS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
 
-grid_len = 100
-max_steps = 10_000
-max_mass = 2000
+
+grid_len = 50
+max_steps = 20
+max_mass = 100
+seed = 7
 
 
 def launch_point(rng):
@@ -34,35 +37,39 @@ def launch_point(rng):
     return(i, j)
 
 
-def neighborhood(cluster):
+def construct_neighborhood(cluster):
     '''
     Keeps track of the candidates in the neighborhood of the cluster.
-    Candidates are empty sites in the 4-neighborhood of the occupied sites.
+    - candidates are empty sites in the 4-neighborhood of the occupied sites
+    - include periodic and absorbing boundaries to avoid out of bound neighbors
     '''
-    candidates = set()
+    neighborhood = set()
     for (i, j) in cluster:
         for di, dj in NEIGHBORS:
-            cand = (i + di, j + dj)
-            if cand not in cluster:
-                candidates.add(cand)
-    return candidates
+            cand_i = i + di
+            cand_j = (j + dj) % grid_len        #periodic boundary
+            if 0 <= cand_i < grid_len and (cand_i, cand_j) not in cluster:
+                neighborhood.add((cand_i, cand_j))
+    return neighborhood
 
 
-def update_neighborhood(candidates, added_candidate, cluster):
+def update_neighborhood(neighborhood, added_candidate, cluster):
     '''
     If a candidate is added to the cluster, the neighborhood is updated.
     - added candidate is removed from the neighborhood
     - its empty neighbors become candidates, which are added to the neighborhood
+    - include periodic and absorbing boundaries to avoid out of bound neighbors
     '''
-    candidates.discard(added_candidate)
+    neighborhood.discard(added_candidate)
     i, j = added_candidate
     for di, dj in NEIGHBORS:
-        cand = (i + di, j + dj)
-        if cand not in cluster:
-            candidates.add(cand)
+            cand_i = i + di
+            cand_j = (j + dj) % grid_len        #periodic boundary
+            if 0 <= cand_i < grid_len and (cand_i, cand_j) not in cluster:
+                neighborhood.add((cand_i, cand_j))
 
 
-def random_walker(rng, neighborhood):
+def start_random_walker(rng, neighborhood):
     '''
     Single random walker performs random walk from launching point.
     - starts on launching point in top boundary
@@ -92,7 +99,63 @@ def random_walker(rng, neighborhood):
     
     return None
 
-    
 
+def dla_simulation():
+    '''
+    Monte Carlo simulation for DLA on 2D grid.
+    - origin in the middle of the bottom boundary
+    - sends out random walkers until max mass is reached 
+    '''
+    rng = np.random.default_rng(seed)
+    origin = (grid_len - 1, grid_len // 2)
+    cluster = {origin}
+    neighborhood = construct_neighborhood(cluster)
+
+    while len(cluster) < max_mass:
+        attachment = start_random_walker(rng, neighborhood)
+        if attachment is None:
+            continue
+
+        # add new attachment to the cluster and update neighborhood
+        cluster.add(attachment)
+        update_neighborhood(neighborhood, attachment, cluster)
+    return cluster
+
+
+def print_cluster(cluster):
+    # convert set into matrix
+    cluster_grid = np.zeros((grid_len, grid_len))
+    for (i, j) in cluster:
+        cluster_grid[i, j] = 1
+    
+    # make plot
+    plt.figure(figsize=(6, 6))
+    plt.imshow(cluster_grid, origin="upper", cmap="inferno")
+    plt.title("DLA Cluster")
+    plt.axis("off")
+    plt.show()
+
+
+def plot_cluster(cluster):
+    '''cluster_grid = np.zeros((grid_len, grid_len))
+    for (i, j) in cluster:
+        cluster_grid[i, j] = 1'''
+
+    xs = [x for (x, _) in cluster]
+    ys = [y for (_, y) in cluster]
+    history = np.linspace(0, 1, len(cluster))
+
+    plt.figure(figsize=(6, 6))
+    plt.scatter(xs, ys, s=1, c=history, cmap='cool', vmin=0, vmax=1)
+    plt.gca().set_aspect("equal", "box")
+    plt.axis("off")
+    plt.show()
+
+
+if __name__ == "__main__":
+    cluster = dla_simulation()
+    #print_cluster(cluster)
+    plot_cluster(cluster)
+    
 
         
