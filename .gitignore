@@ -1,5 +1,5 @@
-output/*.txt
-output/plots/*.eps
+assignment*/output/*.txt
+assignment*/output/plots/*.eps
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
