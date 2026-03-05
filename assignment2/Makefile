@@ -36,10 +36,29 @@ plot: $(DLA_OUTPUTS)
 	@echo "plot:  dla"
 	@$(PYTHON) scripts/plot_dla.py
 
+# ── Sweep benchmark (eta × omega) ────────────────────────────────────
+
+SWEEP_BIN  := sweep_bin
+SWEEP_SRCS := $(SRC_DIR)/sweep_main.cpp $(SRC_DIR)/sor.cpp $(SRC_DIR)/rb_gauss_seidel.cpp
+
+$(SWEEP_BIN): $(SWEEP_SRCS) $(SRC_DIR)/library.hpp
+	@echo "build: sweep_bin"
+	@$(CXX) $(CXXFLAGS) $(EIGEN_INC) $(BLAS_INC) $(BLAS_FLAGS) -I$(SRC_DIR) -o $@ $(SWEEP_SRCS) $(BLAS_LIB)
+
+SWEEP_OUTPUTS := $(OUT_DIR)/sweep_eta_omega.csv $(OUT_DIR)/sweep_rbgs.csv
+
+$(SWEEP_OUTPUTS): $(SWEEP_BIN) | $(OUT_DIR)
+	@echo "run:   sweep_bin"
+	@./$(SWEEP_BIN)
+
+sweep: $(SWEEP_OUTPUTS)
+	@echo "tables: generating LaTeX"
+	@$(PYTHON) scripts/generate_tables.py
+
 $(OUT_DIR):
 	@mkdir -p $(OUT_DIR) $(OUT_DIR)/plots
 
 clean:
-	@rm -f $(DLA_BIN)
-	@rm -f $(OUT_DIR)/*.txt
+	@rm -f $(DLA_BIN) sweep_bin
+	@rm -f $(OUT_DIR)/*.txt $(OUT_DIR)/*.csv
 	@echo "clean: done"

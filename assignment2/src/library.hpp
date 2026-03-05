@@ -43,3 +43,9 @@ find_candidates(int N, const Eigen::MatrixXi &mask);
 std::vector<double> compute_pg(const std::vector<std::pair<int, int>> &candidates,
                                const Eigen::MatrixXd &concentration,
                                double eta);
+
+// Red-Black Gauss-Seidel solver (ω=1, checkerboard ordering, OpenMP parallel).
+SorResult
+rb_gauss_seidel_solve(int N, double tolerance, int max_iter,
+                      const Eigen::MatrixXi &mask,
+                      const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
