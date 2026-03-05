@@ -169,21 +169,24 @@ end
 function dla_simulation_ps(ps)
     #= Monte Carlo simulation for DLA on 2D grid with sticking probability ps.
     - origin in the middle of the bottom boundary
-    - sends out random walkers until max mass is reached =#
+    - sends out random walkers until max mass is reached
+    - returns ordered growth log (particles in attachment order) =#
 
     rng = MersenneTwister(seed)
     origin = (grid_len, div(grid_len, 2))
     cluster = Set{Tuple{Int, Int}}((origin,))
     neighborhood = construct_neighborhood(cluster)
+    growth = [origin]
 
     while length(cluster) < max_mass
         attachment = release_random_walker_ps(rng, neighborhood, ps, cluster)
         if attachment !== nothing
             push!(cluster, attachment)
+            push!(growth, attachment)
             update_neighborhood(neighborhood, attachment, cluster)
         end
     end
-    return cluster
+    return growth
 end
 
 
@@ -206,32 +209,34 @@ function plot_cluster(cluster)
 end
 
 
-function plot_clusters_ps(probabilities)
-    pl = plot(layout = (1,3), size=(1200, 900))
-    for (i, ps) in enumerate(probabilities)
-        cluster = dla_simulation_ps(ps)
-        
-        x = [i for (i, _) in cluster]
-        y = [j for (_, j) in cluster]
-        
-        # plot in the i-th subplot
-        scatter!(pl[i], y, x, marker=:circle, color=:blue, axis=false, legend=false)
-        
-        # invert the y-axis for the plot to have the origin at the bottom
-        plot!(pl[i], yflip=true, title="Sticking Probability = $ps")
-        
-        # ensure the dots are evenly spaced (aspect ratio)
-        plot!(pl[i], aspect_ratio=1)
+function animate_clusters_ps(probabilities)
+    #= Animates the DLA cluster growth for different sticking probabilities side-by-side.
+    - saves the animation as a GIF =#
 
-        #title!(pl[i], "Sticking Probability = $ps")
+    growths = [dla_simulation_ps(ps) for ps in probabilities]
+    step = max(1, max_mass ÷ 100)
+
+    anim = @animate for k in 1:step:max_mass
+        pl = plot(layout=(1, 3), size=(1200, 900))
+        for (i, ps) in enumerate(probabilities)
+            points = growths[i][1:min(k, length(growths[i]))]
+            x = [p[1] for p in points]
+            y = [p[2] for p in points]
+
+            scatter!(pl[i], y, x, marker=:circle, markersize=3, color=:blue,
+                     axis=false, legend=false,
+                     xlims=(1, grid_len), ylims=(1, grid_len))
+            plot!(pl[i], yflip=true, title="ps=$ps  (n=$(length(points)))")
+            plot!(pl[i], aspect_ratio=1)
+        end
     end
-    display(pl)
+    gif(anim, "output/plots/dla_clusters.gif", fps=10)
 end
 
 
 #cluster = dla_simulation()
 #plot_cluster(cluster)
 
-# plot clusters with different ps
+# animate clusters with different ps
 probabilities = [0.1, 0.5, 1.0]
-plot_clusters_ps(probabilities)
+animate_clusters_ps(probabilities)
