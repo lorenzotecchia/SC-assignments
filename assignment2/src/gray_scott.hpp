@@ -47,8 +47,8 @@
 void simulate_diffusion(
     std::vector<std::vector<std::vector<double>>> &u_history,
     std::vector<std::vector<std::vector<double>>> &v_history,
-    const std::vector<std::vector<double>> &u_init,
-    const std::vector<std::vector<double>> &v_init, int t_num, int save_every,
+    std::vector<std::vector<double>> &u_init,
+    std::vector<std::vector<double>> &v_init, int t_num, int save_every,
     double u_coefficient, double v_coefficient, double f_rate, double k_rate);
 
 //

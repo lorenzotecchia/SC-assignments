@@ -23,8 +23,10 @@ int main() {
   std::cout << "diffusion: coefficient of u, v = " << u_coefficient << ", "
             << v_coefficient << '\n';
   std::mt19937 rng(42);
-  std::vector<std::vector<double>> u_init(x_num, std::vector<double>(y_num, 0.0));
-  std::vector<std::vector<double>> v_init(x_num, std::vector<double>(y_num, 0.0));
+  std::vector<std::vector<double>> u_init(x_num + 2,
+                                          std::vector<double>(y_num + 2, 0.0));
+  std::vector<std::vector<double>> v_init(x_num + 2,
+                                          std::vector<double>(y_num + 2, 0.0));
   initialize(u_init, v_init, 0.1, 0.5, 0.25, 0.0, rng);
 
   // data collectors:

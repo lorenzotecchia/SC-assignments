@@ -5,11 +5,14 @@
 void simulate_diffusion(
     std::vector<std::vector<std::vector<double>>> &u_history,
     std::vector<std::vector<std::vector<double>>> &v_history,
-    const std::vector<std::vector<double>> &u_init,
-    const std::vector<std::vector<double>> &v_init, int t_num, int save_every,
+    std::vector<std::vector<double>> &u_init,
+    std::vector<std::vector<double>> &v_init, int t_num, int save_every,
     double u_coefficient, double v_coefficient, double f_rate, double k_rate) {
   int n_columns = u_init[0].size();
   int n_rows = u_init.size();
+
+  update_ghost_boundaries(v_init);
+  update_ghost_boundaries(u_init);
 
   u_history[0] = u_init;
   v_history[0] = v_init;
@@ -135,7 +138,7 @@ void save_data_txt(
   }
 
   for (int t = 0; t < data_collector.size(); t++) {
-    for (int i = 0; i < n_rows; i++) {
+    for (int i = 1; i < n_rows - 1; i++) {
       for (int j = 1; j < n_columns - 1; j++) {
         output << "  " << std::setw(24) << std::setprecision(16)
                << data_collector[t][i][j];
@@ -165,12 +168,11 @@ void save_metadata_txt(int x_num, int t_save, double x_delta,
   output << "  \"x_num\": " << x_num << ",\n";
   output << "  \"t_save\": " << t_save << ",\n";
   output << "  \"x_delta\": " << x_delta << ",\n";
-  output << "  \"t_delta_save\": " << t_delta_save << "\n";
+  output << "  \"t_delta_save\": " << t_delta_save << ",\n";
   output << "  \"u_diff_constant\": " << u_diff_constant << ",\n";
   output << "  \"v_diff_constant\": " << v_diff_constant << ",\n";
-  output << "  \"f_rate\": " << k_rate << ",\n";
-  output << "  \"k_rate\": " << k_rate << ",\n";
-
+  output << "  \"f_rate\": " << f_rate << ",\n";
+  output << "  \"k_rate\": " << k_rate << "\n";
   output << "}\n";
 
   output.close();
