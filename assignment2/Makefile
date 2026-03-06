@@ -55,10 +55,24 @@ sweep: $(SWEEP_OUTPUTS)
 	@echo "tables: generating LaTeX"
 	@$(PYTHON) scripts/generate_tables.py
 
+# ── CG vs SOR comparison ──────────────────────────────────────────────
+
+CG_BIN    := cg_compare
+CG_SRCS   := $(SRC_DIR)/main_cg_compare.cpp $(SRC_DIR)/sor.cpp $(SRC_DIR)/cg.cpp
+
+$(CG_BIN): $(CG_SRCS) $(SRC_DIR)/library.hpp
+	@echo "build: cg_compare"
+	@$(CXX) $(CXXFLAGS) $(EIGEN_INC) $(BLAS_INC) $(BLAS_FLAGS) -I$(SRC_DIR) -o $@ $(CG_SRCS) $(BLAS_LIB)
+
+cg: $(CG_BIN)
+	@./$(CG_BIN)
+	@echo "plot:  cg_compare"
+	@$(PYTHON) scripts/plot_cg_compare.py
+
 $(OUT_DIR):
 	@mkdir -p $(OUT_DIR) $(OUT_DIR)/plots
 
 clean:
-	@rm -f $(DLA_BIN) sweep_bin
+	@rm -f $(DLA_BIN) sweep_bin cg_compare
 	@rm -f $(OUT_DIR)/*.txt $(OUT_DIR)/*.csv
 	@echo "clean: done"

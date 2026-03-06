@@ -49,3 +49,9 @@ SorResult
 rb_gauss_seidel_solve(int N, double tolerance, int max_iter,
                       const Eigen::MatrixXi &mask,
                       const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
+
+// Conjugate Gradient solver (Eigen SparseCG, builds Laplacian each call).
+SorResult
+cg_solve(int N, double tolerance, int max_iter,
+         const Eigen::MatrixXi &mask,
+         const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
