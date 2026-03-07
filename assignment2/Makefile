@@ -16,7 +16,7 @@ OUT_DIR    := output
 DLA_BIN   := dla_sim
 DLA_SRCS  := $(SRC_DIR)/main_dla.cpp $(SRC_DIR)/sor.cpp
 
-all: plot
+all: clean build run plot cg
 
 build: $(DLA_BIN)
 

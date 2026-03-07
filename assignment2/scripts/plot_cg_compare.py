@@ -11,51 +11,77 @@ plt.rcParams.update({
     "ytick.labelsize": 11,
 })
 
-df = pd.read_csv("output/cg_compare.csv")
+# ── Load multi-run data ──────────────────────────────────────────────────────
+mdf = pd.read_csv("output/cg_compare_multi.csv")
+n_seeds = mdf["seed"].nunique()
+
+sor_df = mdf[mdf["solver"] == "SOR"]
+cg_df  = mdf[mdf["solver"] == "CG"]
+
+sor_piv_ms    = sor_df.pivot(index="step", columns="seed", values="solve_ms")
+sor_piv_iters = sor_df.pivot(index="step", columns="seed", values="iters")
+cg_piv_ms     = cg_df.pivot(index="step", columns="seed", values="solve_ms")
+cg_piv_iters  = cg_df.pivot(index="step", columns="seed", values="iters")
+
+steps = sor_piv_ms.index.values
+
+def mean_std(piv):
+    return piv.mean(axis=1).values, piv.std(axis=1).values
+
+sor_ms_mean, sor_ms_std = mean_std(sor_piv_ms)
+cg_ms_mean,  cg_ms_std  = mean_std(cg_piv_ms)
+sor_it_mean, sor_it_std = mean_std(sor_piv_iters)
+cg_it_mean,  cg_it_std  = mean_std(cg_piv_iters)
 
 fig, axes = plt.subplots(2, 2, figsize=(12, 9))
 
-# ── 1. Per-step solve time ────────────────────────────────────────────────────
+# ── 1. Per-step solve time (mean ± std) ──────────────────────────────────────
 ax = axes[0, 0]
-ax.plot(df["step"], df["sor_solve_ms"], alpha=0.5, linewidth=0.8, label="SOR")
-ax.plot(df["step"], df["cg_solve_ms"], alpha=0.5, linewidth=0.8, label="CG")
-# Rolling average
-w = 10
-ax.plot(df["step"], df["sor_solve_ms"].rolling(w, center=True).mean(),
-        linewidth=2, label=f"SOR (avg {w})")
-ax.plot(df["step"], df["cg_solve_ms"].rolling(w, center=True).mean(),
-        linewidth=2, label=f"CG (avg {w})")
+ax.plot(steps, sor_ms_mean, linewidth=2, label="SOR")
+ax.fill_between(steps, sor_ms_mean - sor_ms_std, sor_ms_mean + sor_ms_std,
+                alpha=0.25)
+ax.plot(steps, cg_ms_mean, linewidth=2, label="CG")
+ax.fill_between(steps, cg_ms_mean - cg_ms_std, cg_ms_mean + cg_ms_std,
+                alpha=0.25)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Solve time (ms)")
-ax.set_title("Per-step solve time")
+ax.set_title(f"Per-step solve time (mean ± 1σ, n={n_seeds})")
 ax.legend()
 ax.grid(True, alpha=0.3)
 
-# ── 2. Per-step solver iterations ─────────────────────────────────────────────
+# ── 2. Per-step solver iterations (mean ± std) ──────────────────────────────
 ax = axes[0, 1]
-ax.plot(df["step"], df["sor_iters"], alpha=0.5, linewidth=0.8, label="SOR")
-ax.plot(df["step"], df["cg_iters"], alpha=0.5, linewidth=0.8, label="CG")
-ax.plot(df["step"], df["sor_iters"].rolling(w, center=True).mean(),
-        linewidth=2, label=f"SOR (avg {w})")
-ax.plot(df["step"], df["cg_iters"].rolling(w, center=True).mean(),
-        linewidth=2, label=f"CG (avg {w})")
+ax.plot(steps, sor_it_mean, linewidth=2, label="SOR")
+ax.fill_between(steps, sor_it_mean - sor_it_std, sor_it_mean + sor_it_std,
+                alpha=0.25)
+ax.plot(steps, cg_it_mean, linewidth=2, label="CG")
+ax.fill_between(steps, cg_it_mean - cg_it_std, cg_it_mean + cg_it_std,
+                alpha=0.25)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Solver iterations")
-ax.set_title("Per-step solver iterations")
+ax.set_title(f"Per-step solver iterations (mean ± 1σ, n={n_seeds})")
 ax.legend()
 ax.grid(True, alpha=0.3)
 
-# ── 3. Cumulative solve time ─────────────────────────────────────────────────
+# ── 3. Cumulative solve time (mean ± std) ────────────────────────────────────
 ax = axes[1, 0]
-ax.plot(df["step"], df["sor_solve_ms"].cumsum(), linewidth=2, label="SOR")
-ax.plot(df["step"], df["cg_solve_ms"].cumsum(), linewidth=2, label="CG")
+sor_cum = sor_piv_ms.cumsum(axis=0)
+cg_cum  = cg_piv_ms.cumsum(axis=0)
+sor_cum_mean, sor_cum_std = mean_std(sor_cum)
+cg_cum_mean,  cg_cum_std  = mean_std(cg_cum)
+ax.plot(steps, sor_cum_mean, linewidth=2, label="SOR")
+ax.fill_between(steps, sor_cum_mean - sor_cum_std,
+                sor_cum_mean + sor_cum_std, alpha=0.25)
+ax.plot(steps, cg_cum_mean, linewidth=2, label="CG")
+ax.fill_between(steps, cg_cum_mean - cg_cum_std,
+                cg_cum_mean + cg_cum_std, alpha=0.25)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Cumulative solve time (ms)")
-ax.set_title("Cumulative solve time")
+ax.set_title(f"Cumulative solve time (mean ± 1σ, n={n_seeds})")
 ax.legend()
 ax.grid(True, alpha=0.3)
 
-# ── 4. Concentration difference heatmap ───────────────────────────────────────
+# ── 4. Concentration difference heatmap ──────────────────────────────────────
 ax = axes[1, 1]
 try:
     diff = np.loadtxt("output/cg_conc_diff.txt")
@@ -70,7 +96,8 @@ except Exception:
             transform=ax.transAxes)
     ax.set_title("Concentration difference")
 
-fig.suptitle("DLA Solver Comparison: SOR vs Eigen-CG", fontsize=15, y=1.01)
+fig.suptitle(f"DLA Solver Comparison: SOR vs Eigen-CG ({n_seeds} seeds)",
+             fontsize=15, y=1.01)
 fig.tight_layout()
 fig.savefig("output/plots/cg_compare.png", dpi=150, bbox_inches="tight")
 print("saved output/plots/cg_compare.png")
