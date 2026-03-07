@@ -1,9 +1,58 @@
+#ifndef GRAY_SCOTT_HPP
+#define GRAY_SCOTT_HPP
+
+#include <cassert>
 #include <fstream>
 #include <iomanip>
 #include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+//
+// Performs one diffusion step of the simulation: updates interior cells
+// (excluding ghost and fixed boundaries) into new state.
+//
+// @param u_old             State of u at previous step (including ghost
+//                          columns).
+// @param u_new             State in which the new state of u will be stored.
+// @param v_old             State of v at previous step (including ghost
+//                          columns).
+// @param v_new             State in which the new state of v will be stored.
+// @param u_coefficient     Coefficient of u in the finite difference scheme.
+// @param v_coefficient     Coefficient of v in the finite difference scheme.
+// @param n_rows            Number of rows of the 2D grid (including boundary
+//                          rows).
+// @param n_columns         Number of columns of the 2D grid (including ghost
+//                          columns).
+//
+void diffusion_step(const std::vector<std::vector<double>> &u_old,
+                    std::vector<std::vector<double>> &u_new,
+                    const std::vector<std::vector<double>> &v_old,
+                    std::vector<std::vector<double>> &v_new,
+                    double u_coefficient, double v_coefficient, int n_rows,
+                    int n_columns);
+
+//
+// Performs one reaction step of the simulation: updates interior cells
+// (excluding ghost and fixed boundaries) into new state.
+//
+// @param u_old             Current state of u (including ghost
+//                          columns).
+// @param v_old             Current state of v (including ghost
+//                          columns).
+// @param f_rate            Feed rate at wich U is added into the
+//                          system.
+// @param k_rate            Added to f_rate forms the decay rate of V.
+// @param dt                Time interval between time steps.
+// @param n_rows            Number of rows of the 2D grid (including boundary
+//                          rows).
+// @param n_columns         Number of columns of the 2D grid (including ghost
+//                          columns).
+//
+void reaction_step(std::vector<std::vector<double>> &u,
+                   std::vector<std::vector<double>> &v, double f_rate,
+                   double k_rate, double dt, int n_rows, int n_columns);
 
 //
 // Simulation of a 2D reaction-diffusion Gray-Scott process on the domain
@@ -20,118 +69,161 @@
 // where c(x,y) is the concentration field of u or v.
 //
 // The domain is discretized on a uniform grid.
-// At each time step, the system is described by two matrices whose element u_ij
-// and v_ij approximates u(i*dx, j*dy) and v(i*dx, j*dy), where dx and dy are
-// the spatial grid spacings.
+// At each time step, the system is described by two matrices whose element
+// u_ij and v_ij approximates u(i*dx, j*dy) and v(i*dx, j*dy), where dx and
+// dy are the spatial grid spacings.
 //
 // The simulation runs at full temporal resolution (t_num steps) for
 // accuracy, but only every save_every-th frame is stored for output.
 //
-// @param u_history         Vector of saved system states of u.
-// @param v_history         Vector of saved system states of v.
-// @param u_init            Initial U concentration field (including ghost
-//                          boundaries).
-// @param v_init            Initial V concentration field (including ghost
-//                          boundaries).
-// @param t_num             Number of time steps (including initial condition).
-// @param save_every        Interval between saved frames.
-// @param u_coefficient     Diffusion coefficient factor of U that appears in
-// the
-//                          finite-difference discretization (D*dt/dx^2).
-// @param v_coefficient     Diffusion coefficient factor of V that appears in
-// the
-//                          finite-difference discretization (D*dt/dx^2).
-// @param f_rate            Feed rate at wich U is added into the system.
-// @param k_rate            Added to f_rate forms the decay rate of V.
+// @param u_history                 Vector of saved system states of u.
+// @param v_history                 Vector of saved system states of v.
+// @param u_init                    Initial U concentration field (including
+//                                  ghost boundaries).
+// @param v_init                    Initial V concentration field (including
+//                                  ghost boundaries).
+// @param t_num                     Number of time steps (including initial
+//                                  condition).
+// @param save_every                Interval between saved frames.
+// @param u_coefficient             Diffusion coefficient factor of U that
+//                                  appears in the finite-difference
+//                                  discretization (D*dt/dx^2).
+// @param v_coefficient             Diffusion coefficient factor of V that
+//                                  appears in the finite-difference
+//                                  discretization (D*dt/dx^2).
+// @param f_rate                    Feed rate at wich U is added into the
+//                                  system.
+// @param k_rate                    Added to f_rate forms the decay rate of
+// V.
+// @param dt                        Time interval between two steps.
+// @param update_ghost_boundaries   Function that update ghost boundaries,
+// to
+//                                  enforce periodic or Neumann boudnary
+//                                  condition.
 //
+
+template <typename Function>
 void simulate_diffusion(
     std::vector<std::vector<std::vector<double>>> &u_history,
     std::vector<std::vector<std::vector<double>>> &v_history,
     std::vector<std::vector<double>> &u_init,
     std::vector<std::vector<double>> &v_init, int t_num, int save_every,
-    double u_coefficient, double v_coefficient, double f_rate, double k_rate);
+    double u_coefficient, double v_coefficient, double f_rate, double k_rate,
+    double dt, Function update_ghost_boundaries) {
+  int n_columns = u_init[0].size();
+  int n_rows = u_init.size();
+
+  u_history[0] = u_init;
+  v_history[0] = v_init;
+  std::vector<std::vector<double>> u_old = u_init;
+  std::vector<std::vector<double>> v_old = v_init;
+  std::vector<std::vector<double>> u_new(n_rows,
+                                         std::vector<double>(n_columns));
+  std::vector<std::vector<double>> v_new(n_rows,
+                                         std::vector<double>(n_columns));
+
+  int t_save_index = 1;
+  for (int t = 1; t < t_num; t++) {
+    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, n_rows, n_columns);
+    update_ghost_boundaries(u_new);
+    update_ghost_boundaries(v_new);
+    diffusion_step(u_old, u_new, v_old, v_new, u_coefficient, v_coefficient,
+                   n_rows, n_columns);
+
+    update_ghost_boundaries(u_new);
+    update_ghost_boundaries(v_new);
+    std::swap(u_old, u_new);
+    std::swap(v_old, v_new);
+    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, n_rows, n_columns);
+    if (t % save_every == 0) {
+      assert(t_save_index < u_history.size());
+      assert(t_save_index < v_history.size());
+      u_history[t_save_index] = u_old;
+      v_history[t_save_index] = v_old;
+      t_save_index++;
+    }
+  }
+}
 
 //
-// Performs one step of the simulation: updates interior cells (excluding
-// ghost and fixed boundaries) into new state, then updates ghost boundaries.
+// Performs the update rule for a single interior cell in the u or v
+// concentration field, relative to the reaction step.
 //
-// @param u_old             State of u at previous step (including ghost
-//                          columns).
-// @param u_new             State in which the new state of u will be stored.
-// @param v_old             State of v at previous step (including ghost
-//                          columns).
-// @param v_new             State in which the new state of v will be stored.
-// @param u_coefficient     Coefficient of u in the finite difference scheme.
-// @param v_coefficient     Coefficient of v in the finite difference scheme.
-// @param f_rate            Feed rate at wich U is added into the system.
-// @param k_rate            Added to f_rate forms the decay rate of V.
-// @param n_rows            Number of rows of the 2D grid (including boundary
-//                          rows).
-// @param n_columns         Number of columns of the 2D grid (including ghost
-//                          columns).
-//
-void step_diffusion(const std::vector<std::vector<double>> &u_old,
-                    std::vector<std::vector<double>> &u_new,
-                    const std::vector<std::vector<double>> &v_old,
-                    std::vector<std::vector<double>> &v_new,
-                    double u_coefficient, double v_coefficient, double f_rate,
-                    double k_rate, int n_rows, int n_columns);
-
-//
-// Performs the update rule for a single interior cell in the u concentration
-// field.
-//
-// @param u                 Matrix containing the grid (including ghost
-//                          columns) of concentration of u.
-// @param v                 Matrix containing the grid (including ghost
-//                          columns) of concentration of v.
+// @param matrix            Matrix of previous time step concentration field.
 // @param i                 Row index of the cell.
 // @param j                 Column index of the cell.
-// @param u_coefficient     Coefficient of u in the finite difference scheme
-//                          (D*dt/dx^2).
-// @param f_rate            Feed rate at wich U is added into the system.
-// @return                  New value of u at the cell (i, j).
+// @param coefficient       Coefficient of the chemical in the finite difference
+//                          scheme (D*dt/dx^2).
+// @return                  New value of the concentration at the cell (i, j).
 //
-double u_update(const std::vector<std::vector<double>> &u,
-                const std::vector<std::vector<double>> &v, int i, int j,
-                double u_coefficient, double f_rate);
+double diffusion_update(const std::vector<std::vector<double>> &matrix, int i,
+                        int j, double coefficient);
 
 //
-// Performs the update rule for a single interior cell in the v concentration
-// field.
+// Performs the update rule for a single interior cell in the u and v
+// concentration field, relative to the reaction step.
 //
-// @param u                 Matrix containing the grid (including ghost
-//                          columns) of concentration of u.
-// @param v                 Matrix containing the grid (including ghost
-//                          columns) of concentration of v.
-// @param i                 Row index of the cell.
-// @param j                 Column index of the cell.
-// @param v_coefficient     Coefficient of v in the finite difference scheme
-//                          (D*dt/dx^2).
-// @param f_rate            Feed rate at wich U is added into the system.
+// @param u_ij_old          State of u at previous step (including ghost
+//                          columns).
+// @param u_ij_new          State in which the new state of u will be
+// stored.
+// @param v_ij_old          State of v at previous step (including ghost
+//                          columns).
+// @param v_ij_new          State in which the new state of v will be
+// stored.
+// @param f_rate            Feed rate at wich U is added into the
+//                          system.
 // @param k_rate            Added to f_rate forms the decay rate of V.
-// @return                  New value of v at the cell (i, j).
+// @param dt                Time interval between time steps.
+// @param max_iterations    Maximum number of iterations for the Newton
+// implicit
+//                          method.
+// @param tolerance         Maximum residual tolerated.
 //
-double v_update(const std::vector<std::vector<double>> &u,
-                const std::vector<std::vector<double>> &v, int i, int j,
-                double v_coefficient, double f_rate, double k_rate);
+void reaction_update(double &u_ij, double &v_ij, double f_rate, double k_rate,
+                     double dt, const int &max_iterations,
+                     const double &tolerance);
 
-// Update ghost columns to enforce periodic boundary conditions in x and y.
-// The matrix is expected to have ghost columns at indices 0 and n_columns-1,
-// which are copies of columns at indeces n_columns - 2 and 1, respectively.
-// also, the matrix is expected to have ghost rows at indices 0 and n_rows-1,
-// which are copies of rows at indeces n_rows - 2 and 1, respectively.
+// Compute residual for the iterative Newton implicit method.
+void compute_residual(double &residual_u, double &residual_v,
+                      const double &u_ij_old, const double &u_ij_new,
+                      const double &v_ij_old, const double &v_ij_new,
+                      const double f_rate, const double k_rate, double dt);
+
+// compute jacobian for the iterative Newton implicit method.
+void compute_jacobian(double u_ij_new, double v_ij_new, double dt,
+                      double f_rate, double k_rate, double &J11, double &J12,
+                      double &J21, double &J22);
+
+// Update ghost columns and rows to enforce periodic boundary conditions in x
+// and y. The matrix is expected to have ghost columns at indices 0 and
+// n_columns-1, which are copies of columns at indeces n_columns - 2 and 1,
+// respectively. Also, the matrix is expected to have ghost rows at indices 0
+// and n_rows-1, which are copies of rows at indeces n_rows - 2 and 1,
+// respectively.
+//
 // @param matrix            Matrix in which ghost boundaries will be updated.
 //
-void update_ghost_boundaries(std::vector<std::vector<double>> &matrix);
+void update_periodic_boundaries(std::vector<std::vector<double>> &matrix);
 
-// Save simulation data to a text file. Ghost columns (first and last columns)
-// are omitted when writing.
+// Update ghost columns to enforce zero-flux Neumann boundary conditions in x
+// and y. The matrix is expected to have ghost columns at indices 0 and
+// n_columns-1, which are copies of columns at indeces 1 and n_columns-2,
+// respectively. Also, the matrix is expected to have ghost rows at indices 0
+// and n_rows-1, which are copies of rows at indeces 1 and n_rows-2,
+// respectively.
+//
+// @param matrix            Matrix in which ghost boundaries will be updated.
+//
+
+void update_insulated_boundaries(std::vector<std::vector<double>> &matrix);
+
+// Save simulation data to a text file. Ghost columns (first and last
+// columns) are omitted when writing.
 //
 // @param data_collector    Vector of system states at each saved step.
 // @param output_filename   Path to the output file.
 //
-
 void initialize(std::vector<std::vector<double>> &u_init,
                 std::vector<std::vector<double>> &v_init, double width,
                 double u_value, double v_value, double perturbation,
@@ -156,3 +248,5 @@ void save_metadata_txt(int x_num, int t_save, double x_delta,
                        double v_diff_constant, double f_rate, double k_rate,
                        const std::string &output_filename_xt,
                        const std::string &output_filename_params);
+
+#endif // GRAY_SCOTT_HPP

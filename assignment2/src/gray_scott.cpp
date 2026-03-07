@@ -2,87 +2,89 @@
 #include <cassert>
 #include <random>
 
-void simulate_diffusion(
-    std::vector<std::vector<std::vector<double>>> &u_history,
-    std::vector<std::vector<std::vector<double>>> &v_history,
-    std::vector<std::vector<double>> &u_init,
-    std::vector<std::vector<double>> &v_init, int t_num, int save_every,
-    double u_coefficient, double v_coefficient, double f_rate, double k_rate) {
-  int n_columns = u_init[0].size();
-  int n_rows = u_init.size();
-
-  update_ghost_boundaries(v_init);
-  update_ghost_boundaries(u_init);
-
-  u_history[0] = u_init;
-  v_history[0] = v_init;
-  std::vector<std::vector<double>> u_old = u_init;
-  std::vector<std::vector<double>> v_old = v_init;
-  std::vector<std::vector<double>> u_new(n_rows,
-                                         std::vector<double>(n_columns));
-  std::vector<std::vector<double>> v_new(n_rows,
-                                         std::vector<double>(n_columns));
-
-  int t_save_index = 1;
-  for (int t = 1; t < t_num; t++) {
-    step_diffusion(u_old, u_new, v_old, v_new, u_coefficient, v_coefficient,
-                   f_rate, k_rate, n_rows, n_columns);
-
-    std::swap(u_old, u_new);
-    std::swap(v_old, v_new);
-
-    if (t % save_every == 0) {
-      assert(t_save_index < u_history.size());
-      assert(t_save_index < v_history.size());
-      u_history[t_save_index] = u_old;
-      v_history[t_save_index] = v_old;
-      t_save_index++;
-    }
-  }
-}
-
-void step_diffusion(const std::vector<std::vector<double>> &u_old,
+void diffusion_step(const std::vector<std::vector<double>> &u_old,
                     std::vector<std::vector<double>> &u_new,
                     const std::vector<std::vector<double>> &v_old,
                     std::vector<std::vector<double>> &v_new,
-                    double u_coefficient, double v_coefficient, double f_rate,
-                    double k_rate, int n_rows, int n_columns) {
+                    double u_coefficient, double v_coefficient, int n_rows,
+                    int n_columns) {
 
 #pragma omp parallel for collapse(2)
   for (int i = 1; i < n_rows - 1; i++) {
     for (int j = 1; j < n_columns - 1; j++) {
-      u_new[i][j] = u_update(u_old, v_old, i, j, u_coefficient, f_rate);
-      v_new[i][j] = v_update(u_old, v_old, i, j, v_coefficient, f_rate, k_rate);
+      u_new[i][j] = diffusion_update(u_old, i, j, u_coefficient);
+      v_new[i][j] = diffusion_update(v_old, i, j, v_coefficient);
     }
   }
-
-  update_ghost_boundaries(u_new);
-  update_ghost_boundaries(v_new);
 }
 
-double u_update(const std::vector<std::vector<double>> &u,
-                const std::vector<std::vector<double>> &v, int i, int j,
-                double u_coefficient, double f_rate) {
-  double diffusion_update =
-      u[i][j] + u_coefficient * (u[i - 1][j] + u[i + 1][j] + u[i][j - 1] +
-                                 u[i][j + 1] - 4 * u[i][j]);
-  double reaction_update =
-      -u[i][j] * v[i][j] * v[i][j] + f_rate - f_rate * u[i][j];
-  return diffusion_update + reaction_update;
+void reaction_step(std::vector<std::vector<double>> &u,
+                   std::vector<std::vector<double>> &v, double f_rate,
+                   double k_rate, double dt, int n_rows, int n_columns) {
+#pragma omp parallel for collapse(2)
+  for (int i = 1; i < n_rows - 1; i++) {
+    for (int j = 1; j < n_columns - 1; j++) {
+      reaction_update(u[i][j], v[i][j], f_rate, k_rate, dt, 100, 1e-6);
+    }
+  }
 }
 
-double v_update(const std::vector<std::vector<double>> &u,
-                const std::vector<std::vector<double>> &v, int i, int j,
-                double v_coefficient, double f_rate, double k_rate) {
-  double diffusion_update =
-      v[i][j] + v_coefficient * (v[i - 1][j] + v[i + 1][j] + v[i][j - 1] +
-                                 v[i][j + 1] - 4 * v[i][j]);
-  double reaction_update =
-      +u[i][j] * v[i][j] * v[i][j] - (f_rate + k_rate) * v[i][j];
-  return diffusion_update + reaction_update;
+double diffusion_update(const std::vector<std::vector<double>> &matrix, int i,
+                        int j, double coefficient) {
+  double sum =
+      matrix[i][j] +
+      coefficient * (matrix[i - 1][j] + matrix[i + 1][j] + matrix[i][j - 1] +
+                     matrix[i][j + 1] - 4 * matrix[i][j]);
+
+  return sum;
 }
 
-void update_ghost_boundaries(std::vector<std::vector<double>> &matrix) {
+void reaction_update(double &u_ij, double &v_ij, double f_rate, double k_rate,
+                     double dt, const int &max_iterations,
+                     const double &tolerance) {
+  double u_ij_old = u_ij;
+  double v_ij_old = v_ij;
+  for (int iter = 0; iter < max_iterations; ++iter) {
+    double residual_u, residual_v;
+    compute_residual(residual_u, residual_v, u_ij_old, u_ij, v_ij_old, v_ij,
+                     f_rate, k_rate, dt);
+    if (std::sqrt(residual_u * residual_u + residual_v * residual_v) <
+        tolerance) {
+      break;
+    }
+
+    double J11, J12, J21, J22;
+    compute_jacobian(u_ij, v_ij, dt, f_rate, k_rate, J11, J12, J21, J22);
+
+    double det = J11 * J22 - J12 * J21;
+    double delta_u = 1 / det * (residual_u * J22 - residual_v * J12);
+    double delta_v = 1 / det * (-residual_u * J21 + residual_v * J11);
+
+    u_ij -= delta_u;
+    v_ij -= delta_v;
+  }
+}
+
+void compute_residual(double &residual_u, double &residual_v,
+                      const double &u_ij_old, const double &u_ij_new,
+                      const double &v_ij_old, const double &v_ij_new,
+                      const double f_rate, const double k_rate, double dt) {
+  residual_u = u_ij_new - u_ij_old +
+               dt * (u_ij_new * v_ij_new * v_ij_new + f_rate * (u_ij_new - 1));
+  residual_v =
+      v_ij_new - v_ij_old -
+      dt * (u_ij_new * v_ij_new * v_ij_new - (f_rate + k_rate) * v_ij_new);
+}
+void compute_jacobian(double u_ij_new, double v_ij_new, double dt,
+                      double f_rate, double k_rate, double &J11, double &J12,
+                      double &J21, double &J22) {
+  J11 = 1 + dt * (v_ij_new * v_ij_new + f_rate);
+  J12 = 2 * dt * u_ij_new * v_ij_new;
+  J21 = -dt * v_ij_new * v_ij_new;
+  J22 = 1 - dt * (2 * u_ij_new * v_ij_new - (f_rate + k_rate));
+}
+
+void update_periodic_boundaries(std::vector<std::vector<double>> &matrix) {
   int n_rows = matrix.size();
   int n_columns = matrix[0].size();
 
@@ -94,6 +96,21 @@ void update_ghost_boundaries(std::vector<std::vector<double>> &matrix) {
   for (int j = 1; j < n_columns - 1; j++) {
     matrix[0][j] = matrix[n_rows - 2][j]; // upper ghost
     matrix[n_rows - 1][j] = matrix[1][j]; // bottom ghost
+  }
+}
+
+void update_insulated_boundaries(std::vector<std::vector<double>> &matrix) {
+  int n_rows = matrix.size();
+  int n_columns = matrix[0].size();
+
+  for (int i = 0; i < n_rows; i++) {
+    matrix[i][0] = matrix[i][1];                         // left insulation
+    matrix[i][n_columns - 1] = matrix[i][n_columns - 2]; // right insulation
+  }
+
+  for (int j = 1; j < n_columns - 1; j++) {
+    matrix[0][j] = matrix[1][j];                   // upper insulation
+    matrix[n_rows - 1][j] = matrix[n_rows - 2][j]; // bottom insulation
   }
 }
 

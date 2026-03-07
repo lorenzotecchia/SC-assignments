@@ -39,7 +39,8 @@ int main() {
       std::vector<std::vector<double>>(x_num, std::vector<double>(y_num)));
 
   simulate_diffusion(u_history, v_history, u_init, v_init, t_num, save_every,
-                     u_coefficient, v_coefficient, f_rate, k_rate);
+                     u_coefficient, v_coefficient, f_rate, k_rate, t_delta,
+                     update_insulated_boundaries);
 
   save_metadata_txt(x_num, t_save, x_delta, t_delta_save, u_diff_constant,
                     v_diff_constant, f_rate, k_rate,

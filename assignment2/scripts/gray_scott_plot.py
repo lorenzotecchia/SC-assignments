@@ -37,17 +37,27 @@ with open("output/gray_scott_u_data.txt", "r") as f:
 u_data = np.loadtxt(lines)
 u_data = u_data.reshape((t_save, n_rows, n_columns))
 
+if np.any(u_data < 0):
+    print("Error: Negative values found in u_data.")
+else:
+    print("All values are non-negative in u_data.")
+
 with open("output/gray_scott_v_data.txt", "r") as f:
     lines = [line for line in f if line.strip()]  # skip blank lines
 v_data = np.loadtxt(lines)
 v_data = v_data.reshape((t_save, n_rows, n_columns))
+
+if np.any(v_data < 0):
+    print("Error: Negative values found in v_data.")
+else:
+    print("All values are non-negative in v_data.")
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
 fig.suptitle("chemicals concentration - gray scott model", fontsize=14)
 
 # initial heatmaps
 im1 = ax1.imshow(u_data[0], cmap="viridis", animated=True, vmin=0, vmax=1)
-im2 = ax2.imshow(v_data[0], cmap="magma", animated=True, vmin=0, vmax=1)
+im2 = ax2.imshow(v_data[0], cmap="viridis", animated=True, vmin=0, vmax=1)
 
 ax1.set_title("U concentration")
 ax2.set_title("V concentration")
