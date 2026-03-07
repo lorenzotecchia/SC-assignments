@@ -26,7 +26,12 @@ run_dla(int N, double eta, int growth_steps,
   Eigen::MatrixXi mask = Eigen::MatrixXi::Zero(N, N);
   mask(0, N / 2) = static_cast<int>(CellType::OCCUPIED);
 
-  auto res = solve_fn(N, mask, apply_boundary);
+  // Analytical gradient initial guess for first solve.
+  Eigen::MatrixXd init_guess(N, N);
+  for (int i = 0; i < N; ++i)
+    init_guess.row(i).setConstant(static_cast<double>(i) / (N - 1));
+
+  auto res = solve_fn(N, mask, apply_boundary, &init_guess);
   long total_iters = res.iterations;
   double total_solve_us = 0.0;
 
@@ -44,7 +49,7 @@ run_dla(int N, double eta, int growth_steps,
     mask(ci, cj) = static_cast<int>(CellType::OCCUPIED);
 
     auto t0 = Clock::now();
-    res = solve_fn(N, mask, apply_boundary);
+    res = solve_fn(N, mask, apply_boundary, &res.solution);
     auto t1 = Clock::now();
 
     total_iters += res.iterations;
@@ -74,8 +79,9 @@ int main() {
                   << std::flush;
 
         auto solve_fn = [&](int n, const Eigen::MatrixXi &mask,
-                            const std::function<void(Eigen::MatrixXd &)> &bc) {
-          return sor_solve(n, omega, tolerance, max_iter, mask, bc);
+                            const std::function<void(Eigen::MatrixXd &)> &bc,
+                            const Eigen::MatrixXd *guess) {
+          return sor_solve(n, omega, tolerance, max_iter, mask, bc, guess);
         };
 
         auto [iters, time_ms] = run_dla(N, eta, growth_steps, solve_fn);
@@ -94,8 +100,9 @@ int main() {
       std::cout << "RBGS eta=" << eta << " ... " << std::flush;
 
       auto solve_fn = [&](int n, const Eigen::MatrixXi &mask,
-                          const std::function<void(Eigen::MatrixXd &)> &bc) {
-        return rb_gauss_seidel_solve(n, tolerance, max_iter, mask, bc);
+                          const std::function<void(Eigen::MatrixXd &)> &bc,
+                          const Eigen::MatrixXd *guess) {
+        return rb_gauss_seidel_solve(n, tolerance, max_iter, mask, bc, guess);
       };
 
       auto [iters, time_ms] = run_dla(N, eta, growth_steps, solve_fn);

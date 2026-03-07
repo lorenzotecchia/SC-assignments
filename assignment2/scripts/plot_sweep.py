@@ -65,6 +65,13 @@ for eta in etas:
     iters = [lookup_iters[(eta, w)] for w in omegas]
     ax.plot(omegas, iters, "o-", label=rf"$\eta={eta:.1f}$")
 
+# Theoretical optimal omega for 5-point Laplacian on N×N grid with
+# Dirichlet BC: omega* = 2 / (1 + sin(pi/N))
+N = 100
+omega_star = 2.0 / (1.0 + np.sin(np.pi / N))
+ax.axvline(omega_star, color="k", ls="--", lw=1.2, alpha=0.6,
+           label=rf"$\omega^*_{{theory}}={omega_star:.4f}$")
+
 ax.set_xlabel(r"$\omega$")
 ax.set_ylabel("Total SOR iterations")
 ax.set_title(r"SOR iterations vs $\omega$ for different $\eta$")
@@ -80,6 +87,9 @@ fig, ax = plt.subplots(figsize=(8, 5))
 for eta in etas:
     times = [lookup_time[(eta, w)] for w in omegas]
     ax.plot(omegas, times, "s-", label=rf"$\eta={eta:.1f}$")
+
+ax.axvline(omega_star, color="k", ls="--", lw=1.2, alpha=0.6,
+           label=rf"$\omega^*_{{theory}}={omega_star:.4f}$")
 
 ax.set_xlabel(r"$\omega$")
 ax.set_ylabel("Total time (ms)")

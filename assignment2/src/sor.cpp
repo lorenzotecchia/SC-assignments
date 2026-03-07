@@ -3,10 +3,11 @@
 SorResult
 sor_solve(int N, double omega, double tolerance, int max_iter,
           const Eigen::MatrixXi &mask,
-          const std::function<void(Eigen::MatrixXd &)> &apply_boundary) {
+          const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+          const Eigen::MatrixXd *initial_guess) {
 
-  // One grid (SOR is in-place, unlike Jacobi which needs two).
-  Eigen::MatrixXd grid = Eigen::MatrixXd::Zero(N, N);
+  Eigen::MatrixXd grid = initial_guess ? *initial_guess
+                                       : Eigen::MatrixXd::Zero(N, N);
   apply_boundary(grid);
 
   // Enforce occupied (aggregate) cells to 0 in the initial state.

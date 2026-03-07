@@ -3,9 +3,11 @@
 SorResult
 rb_gauss_seidel_solve(int N, double tolerance, int max_iter,
                       const Eigen::MatrixXi &mask,
-                      const std::function<void(Eigen::MatrixXd &)> &apply_boundary) {
+                      const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+                      const Eigen::MatrixXd *initial_guess) {
 
-  Eigen::MatrixXd grid = Eigen::MatrixXd::Zero(N, N);
+  Eigen::MatrixXd grid = initial_guess ? *initial_guess
+                                       : Eigen::MatrixXd::Zero(N, N);
   apply_boundary(grid);
 
   for (int i = 0; i < N; ++i)

@@ -15,34 +15,24 @@ plt.rcParams.update({
 mdf = pd.read_csv("output/cg_compare_multi.csv")
 n_seeds = mdf["seed"].nunique()
 
-sor_df = mdf[mdf["solver"] == "SOR"]
-cg_df  = mdf[mdf["solver"] == "CG"]
+solvers = sorted(mdf["solver"].unique())
+colors = {"SOR_cold": "#d62728", "SOR_warm": "#2ca02c", "CG_warm": "#1f77b4",
+           "SOR": "#d62728", "CG": "#1f77b4"}
 
-sor_piv_ms    = sor_df.pivot(index="step", columns="seed", values="solve_ms")
-sor_piv_iters = sor_df.pivot(index="step", columns="seed", values="iters")
-cg_piv_ms     = cg_df.pivot(index="step", columns="seed", values="solve_ms")
-cg_piv_iters  = cg_df.pivot(index="step", columns="seed", values="iters")
+def pivot_stats(df, col):
+    piv = df.pivot(index="step", columns="seed", values=col)
+    return piv.index.values, piv.mean(axis=1).values, piv.std(axis=1).values, piv
 
-steps = sor_piv_ms.index.values
-
-def mean_std(piv):
-    return piv.mean(axis=1).values, piv.std(axis=1).values
-
-sor_ms_mean, sor_ms_std = mean_std(sor_piv_ms)
-cg_ms_mean,  cg_ms_std  = mean_std(cg_piv_ms)
-sor_it_mean, sor_it_std = mean_std(sor_piv_iters)
-cg_it_mean,  cg_it_std  = mean_std(cg_piv_iters)
-
-fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+fig, axes = plt.subplots(2, 2, figsize=(13, 9))
 
 # ── 1. Per-step solve time (mean ± std) ──────────────────────────────────────
 ax = axes[0, 0]
-ax.plot(steps, sor_ms_mean, linewidth=2, label="SOR")
-ax.fill_between(steps, sor_ms_mean - sor_ms_std, sor_ms_mean + sor_ms_std,
-                alpha=0.25)
-ax.plot(steps, cg_ms_mean, linewidth=2, label="CG")
-ax.fill_between(steps, cg_ms_mean - cg_ms_std, cg_ms_mean + cg_ms_std,
-                alpha=0.25)
+for s in solvers:
+    sub = mdf[mdf["solver"] == s]
+    steps, mu, sigma, _ = pivot_stats(sub, "solve_ms")
+    c = colors.get(s, None)
+    ax.plot(steps, mu, linewidth=2, label=s, color=c)
+    ax.fill_between(steps, mu - sigma, mu + sigma, alpha=0.20, color=c)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Solve time (ms)")
 ax.set_title(f"Per-step solve time (mean ± 1σ, n={n_seeds})")
@@ -51,12 +41,12 @@ ax.grid(True, alpha=0.3)
 
 # ── 2. Per-step solver iterations (mean ± std) ──────────────────────────────
 ax = axes[0, 1]
-ax.plot(steps, sor_it_mean, linewidth=2, label="SOR")
-ax.fill_between(steps, sor_it_mean - sor_it_std, sor_it_mean + sor_it_std,
-                alpha=0.25)
-ax.plot(steps, cg_it_mean, linewidth=2, label="CG")
-ax.fill_between(steps, cg_it_mean - cg_it_std, cg_it_mean + cg_it_std,
-                alpha=0.25)
+for s in solvers:
+    sub = mdf[mdf["solver"] == s]
+    steps, mu, sigma, _ = pivot_stats(sub, "iters")
+    c = colors.get(s, None)
+    ax.plot(steps, mu, linewidth=2, label=s, color=c)
+    ax.fill_between(steps, mu - sigma, mu + sigma, alpha=0.20, color=c)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Solver iterations")
 ax.set_title(f"Per-step solver iterations (mean ± 1σ, n={n_seeds})")
@@ -65,16 +55,16 @@ ax.grid(True, alpha=0.3)
 
 # ── 3. Cumulative solve time (mean ± std) ────────────────────────────────────
 ax = axes[1, 0]
-sor_cum = sor_piv_ms.cumsum(axis=0)
-cg_cum  = cg_piv_ms.cumsum(axis=0)
-sor_cum_mean, sor_cum_std = mean_std(sor_cum)
-cg_cum_mean,  cg_cum_std  = mean_std(cg_cum)
-ax.plot(steps, sor_cum_mean, linewidth=2, label="SOR")
-ax.fill_between(steps, sor_cum_mean - sor_cum_std,
-                sor_cum_mean + sor_cum_std, alpha=0.25)
-ax.plot(steps, cg_cum_mean, linewidth=2, label="CG")
-ax.fill_between(steps, cg_cum_mean - cg_cum_std,
-                cg_cum_mean + cg_cum_std, alpha=0.25)
+for s in solvers:
+    sub = mdf[mdf["solver"] == s]
+    _, _, _, piv = pivot_stats(sub, "solve_ms")
+    cum = piv.cumsum(axis=0)
+    steps = cum.index.values
+    mu = cum.mean(axis=1).values
+    sigma = cum.std(axis=1).values
+    c = colors.get(s, None)
+    ax.plot(steps, mu, linewidth=2, label=s, color=c)
+    ax.fill_between(steps, mu - sigma, mu + sigma, alpha=0.20, color=c)
 ax.set_xlabel("Growth step")
 ax.set_ylabel("Cumulative solve time (ms)")
 ax.set_title(f"Cumulative solve time (mean ± 1σ, n={n_seeds})")
@@ -96,7 +86,7 @@ except Exception:
             transform=ax.transAxes)
     ax.set_title("Concentration difference")
 
-fig.suptitle(f"DLA Solver Comparison: SOR vs Eigen-CG ({n_seeds} seeds)",
+fig.suptitle(f"DLA Solver Comparison ({n_seeds} seeds)",
              fontsize=15, y=1.01)
 fig.tight_layout()
 fig.savefig("output/plots/cg_compare.png", dpi=150, bbox_inches="tight")

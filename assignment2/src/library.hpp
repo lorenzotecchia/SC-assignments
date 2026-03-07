@@ -30,10 +30,12 @@ struct StepProfile {
 // SOR solver for DLA.
 // omega: relaxation parameter (1 < omega < 2 for over-relaxation).
 // mask:  N×N integer matrix; 0=EMPTY, 1=OCCUPIED.
+// initial_guess: optional warm-start; if non-null, used instead of zero grid.
 SorResult
 sor_solve(int N, double omega, double tolerance, int max_iter,
           const Eigen::MatrixXi &mask,
-          const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
+          const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+          const Eigen::MatrixXd *initial_guess = nullptr);
 
 // Find growth candidates: empty cells adjacent to occupied cells.
 std::vector<std::pair<int, int>>
@@ -48,10 +50,12 @@ std::vector<double> compute_pg(const std::vector<std::pair<int, int>> &candidate
 SorResult
 rb_gauss_seidel_solve(int N, double tolerance, int max_iter,
                       const Eigen::MatrixXi &mask,
-                      const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
+                      const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+                      const Eigen::MatrixXd *initial_guess = nullptr);
 
 // Conjugate Gradient solver (Eigen SparseCG, builds Laplacian each call).
 SorResult
 cg_solve(int N, double tolerance, int max_iter,
          const Eigen::MatrixXi &mask,
-         const std::function<void(Eigen::MatrixXd &)> &apply_boundary);
+         const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+         const Eigen::MatrixXd *initial_guess = nullptr);

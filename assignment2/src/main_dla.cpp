@@ -82,7 +82,13 @@ int main() {
     Eigen::MatrixXi mask = Eigen::MatrixXi::Zero(N, N);
     mask(0, N / 2) = static_cast<int>(CellType::OCCUPIED);
 
-    auto sres = sor_solve(N, omega, tolerance, max_iter, mask, apply_boundary);
+    // Analytical linear gradient c(i) = i/(N-1) as initial guess.
+    Eigen::MatrixXd init_guess(N, N);
+    for (int i = 0; i < N; ++i)
+      init_guess.row(i).setConstant(static_cast<double>(i) / (N - 1));
+
+    auto sres = sor_solve(N, omega, tolerance, max_iter, mask,
+                          apply_boundary, &init_guess);
 
     // Only first run writes snapshots, growth log, and profile.
     std::ofstream growth_log, snap_file;
@@ -128,7 +134,8 @@ int main() {
       prof.select_us = elapsed_us(t0, t1);
 
       t0 = Clock::now();
-      sres = sor_solve(N, omega, tolerance, max_iter, mask, apply_boundary);
+      sres = sor_solve(N, omega, tolerance, max_iter, mask,
+                       apply_boundary, &sres.solution);
       t1 = Clock::now();
       prof.solve_us = elapsed_us(t0, t1);
       prof.sor_iters = sres.iterations;
@@ -164,5 +171,59 @@ int main() {
   }
 
   std::cout << "\ndone. outputs written to output/\n";
+
+  // ── η investigation: grow DLA clusters at different η values ──────────────
+  const std::vector<double> eta_values = {0.0, 0.5, 1.0, 2.0, 3.0};
+  const unsigned eta_seed = 42;
+  const int eta_steps = 500;
+
+  std::cout << "\n═══ η Investigation ═══\n"
+            << "N=" << N << "  steps=" << eta_steps << "  seed=" << eta_seed
+            << "  η values:";
+  for (double e : eta_values)
+    std::cout << " " << e;
+  std::cout << "\n\n";
+
+  for (double ev : eta_values) {
+    std::cout << "  η=" << ev << " ... " << std::flush;
+
+    Eigen::MatrixXi emask = Eigen::MatrixXi::Zero(N, N);
+    emask(0, N / 2) = static_cast<int>(CellType::OCCUPIED);
+
+    Eigen::MatrixXd einit(N, N);
+    for (int i = 0; i < N; ++i)
+      einit.row(i).setConstant(static_cast<double>(i) / (N - 1));
+
+    auto esres = sor_solve(N, omega, tolerance, max_iter, emask,
+                           apply_boundary, &einit);
+
+    std::mt19937 erng(eta_seed);
+    for (int step = 0; step < eta_steps; ++step) {
+      auto cands = find_candidates(N, emask);
+      if (cands.empty())
+        break;
+      auto pg = compute_pg(cands, esres.solution, ev);
+      std::discrete_distribution<size_t> dist(pg.begin(), pg.end());
+      auto [ci, cj] = cands[dist(erng)];
+      emask(ci, cj) = static_cast<int>(CellType::OCCUPIED);
+      esres = sor_solve(N, omega, tolerance, max_iter, emask,
+                        apply_boundary, &esres.solution);
+    }
+
+    // Write cluster mask for this η.
+    std::string eta_str = std::to_string(ev);
+    // Trim trailing zeros for cleaner filenames.
+    eta_str.erase(eta_str.find_last_not_of('0') + 1, std::string::npos);
+    if (eta_str.back() == '.')
+      eta_str.pop_back();
+    write_mask("output/dla_cluster_eta_" + eta_str + ".txt", emask);
+    write_matrix("output/dla_conc_eta_" + eta_str + ".txt", esres.solution);
+
+    int n_occ = (emask.array() == static_cast<int>(CellType::OCCUPIED)).count();
+    std::cout << n_occ << " cells occupied\n";
+  }
+
+  std::cout << "\nη clusters written to output/dla_cluster_eta_*.txt\n";
+
   return 0;
 }

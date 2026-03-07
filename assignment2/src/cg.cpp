@@ -2,10 +2,10 @@
 #include <Eigen/IterativeLinearSolvers>
 #include <Eigen/Sparse>
 
-SorResult
-cg_solve(int N, double tolerance, int max_iter,
-         const Eigen::MatrixXi &mask,
-         const std::function<void(Eigen::MatrixXd &)> &apply_boundary) {
+SorResult cg_solve(int N, double tolerance, int max_iter,
+                   const Eigen::MatrixXi &mask,
+                   const std::function<void(Eigen::MatrixXd &)> &apply_boundary,
+                   const Eigen::MatrixXd *initial_guess) {
 
   // Map free interior cells to linear-system indices.
   // Interior rows: 1..N-2.  Columns: 0..N-2 (col N-1 mirrors col 0).
@@ -69,7 +69,18 @@ cg_solve(int N, double tolerance, int max_iter,
   cg.setTolerance(tolerance);
   cg.compute(A);
 
-  Eigen::VectorXd x = cg.solve(rhs);
+  Eigen::VectorXd x;
+  if (initial_guess) {
+    // Map 2-D initial guess into 1-D unknown vector.
+    Eigen::VectorXd x0 = Eigen::VectorXd::Zero(n_unknowns);
+    for (int i = 1; i < N - 1; ++i)
+      for (int j = 0; j < N - 1; ++j)
+        if (idx(i, j) >= 0)
+          x0(idx(i, j)) = (*initial_guess)(i, j);
+    x = cg.solveWithGuess(rhs, x0);
+  } else {
+    x = cg.solve(rhs);
+  }
 
   // Unpack solution back onto the 2-D grid.
   Eigen::MatrixXd grid = Eigen::MatrixXd::Zero(N, N);
