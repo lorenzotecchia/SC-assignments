@@ -144,4 +144,4 @@ pip install -r requirements.txt
 
 ## Contributors
 
-[![git-fame](https://git-fame.cdcl.ml/gh/lorenzotecchia/SC-assignments)](https://github.com/lorenzotecchia/SC-assignments)
+![git-fame](output/plots/git_fame.png)
