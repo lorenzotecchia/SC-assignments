@@ -126,43 +126,6 @@ python3 scripts/gray_scott_plot.py   # generate comparison plots
 
 ---
 
-## Plots
-
-### η parameter effect on DLA morphology
-
-<table>
-  <tr>
-    <td><img src="output/plots/eta_clusters.png" width="400"/></td>
-    <td><img src="output/plots/eta_concentrations.png" width="400"/></td>
-  </tr>
-</table>
-
-### CG vs SOR convergence & timing
-
-<img src="output/plots/cg_compare.png" width="600"/>
-
-### SOR parameter sweep
-
-<table>
-  <tr>
-    <td><img src="output/plots/sweep_sor_iters_vs_omega.png" width="400"/></td>
-    <td><img src="output/plots/sweep_sor_time_vs_omega.png" width="400"/></td>
-  </tr>
-  <tr>
-    <td><img src="output/plots/sweep_sor_vs_rbgs.png" width="400"/></td>
-    <td><img src="output/plots/sweep_3d_iters.png" width="400"/></td>
-  </tr>
-</table>
-
-### Grid-size scaling benchmark
-
-<img src="output/plots/scaling.png" width="600"/>
-
-### DLA multi-solver comparison
-
-<img src="output/plots/dla_multi_sor.png" width="600"/>
-
-
 ## Dependencies
 
 - **C++20** compiler (g++-15 or g++)
