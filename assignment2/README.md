@@ -77,14 +77,14 @@ python3 scripts/gray_scott_plot.py   # generate comparison plots
 ## Animations
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/OWNER/REPO/BRANCH/output/gray_scott_animation_f0.014_k0.040.mp4"
+  <video src="https://github.com/lorenzotecchia/SC-assignments/blob/main/assignment2/output/gray_scott_animation_f0.014_k0.040.mp4"
          width="700"
          controls
          loop
          muted
          playsinline>
     Your browser does not support the video tag. Download:
-    <a href="https://raw.githubusercontent.com/OWNER/REPO/BRANCH/output/gray_scott_animation_f0.014_k0.040.mp4">mp4</a>.
+    <a href="https://github.com/lorenzotecchia/SC-assignments/blob/main/assignment2/output/gray_scott_animation_f0.014_k0.040.mp4">mp4</a>.
   </video>
 </p>
 
