@@ -76,23 +76,91 @@ python3 scripts/gray_scott_plot.py   # generate comparison plots
 
 ## Animations
 
-$\epsilon$ pattern
-![animation5](output/plots/gray_scott_animation_f0.014_k0.040.gif)
+### Gray-Scott Reaction-Diffusion
 
+<table>
+  <tr>
+    <td align="center"><strong>ε pattern</strong> — <code>f=0.014, k=0.040</code></td>
+    <td align="center"><strong>α / ξ pattern</strong> — <code>f=0.014, k=0.042</code></td>
+  </tr>
+  <tr>
+    <td><img src="output/plots/gray_scott_animation_f0.014_k0.040.gif" width="400"/></td>
+    <td><img src="output/plots/gray_scott_animation_f0.014_k0.042.gif" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>θ pattern</strong> — <code>f=0.022, k=0.051</code></td>
+    <td align="center"><strong>stripe pattern</strong> — <code>f=0.025, k=0.051</code></td>
+  </tr>
+  <tr>
+    <td><img src="output/plots/gray_scott_animation_f0.022_k0.051.gif" width="400"/></td>
+    <td><img src="output/plots/gray_scott_animation_f0.025_k0.051.gif" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>δ pattern</strong> — <code>f=0.035, k=0.057</code></td>
+    <td align="center"><strong>κ pattern</strong> — <code>f=0.035, k=0.060</code></td>
+  </tr>
+  <tr>
+    <td><img src="output/plots/gray_scott_animation_f0.035_k0.057.gif" width="400"/></td>
+    <td><img src="output/plots/gray_scott_animation_f0.035_k0.060.gif" width="400"/></td>
+  </tr>
+</table>
 
-$\alpha$ or $\xi$ pattern
-![animation5](output/plots/gray_scott_animation_f0.014_k0.042.gif)
+### DLA Cluster Growth
 
+<table>
+  <tr>
+    <td align="center"><strong>SOR-based DLA</strong></td>
+    <td align="center"><strong>CG-based DLA</strong></td>
+  </tr>
+  <tr>
+    <td><img src="output/plots/dla_animation.gif" width="400"/></td>
+    <td><img src="output/plots/cg_dla_animation.gif" width="400"/></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><strong>DLA cluster evolution</strong></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><img src="output/plots/dla_clusters.gif" width="500"/></td>
+  </tr>
+</table>
 
-$\theta$ pattern
-![animation5](output/plots/gray_scott_animation_f0.022_k0.051.gif)
+---
 
+## Plots
 
-$\delta$ pattern
-![animation5](output/plots/gray_scott_animation_f0.035_k0.057.gif)
+### η parameter effect on DLA morphology
 
-$\kappa$ pattern
-![animation5](output/plots/gray_scott_animation_f0.035_k0.060.gif)
+<table>
+  <tr>
+    <td><img src="output/plots/eta_clusters.png" width="400"/></td>
+    <td><img src="output/plots/eta_concentrations.png" width="400"/></td>
+  </tr>
+</table>
+
+### CG vs SOR convergence & timing
+
+<img src="output/plots/cg_compare.png" width="600"/>
+
+### SOR parameter sweep
+
+<table>
+  <tr>
+    <td><img src="output/plots/sweep_sor_iters_vs_omega.png" width="400"/></td>
+    <td><img src="output/plots/sweep_sor_time_vs_omega.png" width="400"/></td>
+  </tr>
+  <tr>
+    <td><img src="output/plots/sweep_sor_vs_rbgs.png" width="400"/></td>
+    <td><img src="output/plots/sweep_3d_iters.png" width="400"/></td>
+  </tr>
+</table>
+
+### Grid-size scaling benchmark
+
+<img src="output/plots/scaling.png" width="600"/>
+
+### DLA multi-solver comparison
+
+<img src="output/plots/dla_multi_sor.png" width="600"/>
 
 
 ## Dependencies
