@@ -2,6 +2,7 @@
 #define GRAY_SCOTT_HPP
 
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <random>
@@ -21,17 +22,14 @@
 // @param v_new             State in which the new state of v will be stored.
 // @param u_coefficient     Coefficient of u in the finite difference scheme.
 // @param v_coefficient     Coefficient of v in the finite difference scheme.
-// @param n_rows            Number of rows of the 2D grid (including boundary
-//                          rows).
-// @param n_columns         Number of columns of the 2D grid (including ghost
-//                          columns).
+// @param N                 Side length of the square grid (including ghost
+//                          cells).
 //
-void diffusion_step(const std::vector<std::vector<double>> &u_old,
-                    std::vector<std::vector<double>> &u_new,
-                    const std::vector<std::vector<double>> &v_old,
-                    std::vector<std::vector<double>> &v_new,
-                    double u_coefficient, double v_coefficient, int n_rows,
-                    int n_columns);
+void diffusion_step(const std::vector<double> &u_old,
+                    std::vector<double> &u_new,
+                    const std::vector<double> &v_old,
+                    std::vector<double> &v_new, double u_coefficient,
+                    double v_coefficient, int N);
 
 //
 // Performs one reaction step of the simulation: updates interior cells
@@ -45,14 +43,11 @@ void diffusion_step(const std::vector<std::vector<double>> &u_old,
 //                          system.
 // @param k_rate            Added to f_rate forms the decay rate of V.
 // @param dt                Time interval between time steps.
-// @param n_rows            Number of rows of the 2D grid (including boundary
-//                          rows).
-// @param n_columns         Number of columns of the 2D grid (including ghost
-//                          columns).
+// @param N                 Side length of the square grid (including ghost
+//                          cells).
 //
-void reaction_step(std::vector<std::vector<double>> &u,
-                   std::vector<std::vector<double>> &v, double f_rate,
-                   double k_rate, double dt, int n_rows, int n_columns);
+void reaction_step(std::vector<double> &u, std::vector<double> &v,
+                   double f_rate, double k_rate, double dt, int N);
 
 //
 // Simulation of a 2D reaction-diffusion Gray-Scott process on the domain
@@ -102,45 +97,51 @@ void reaction_step(std::vector<std::vector<double>> &u,
 //                                  condition.
 //
 
+// Write a single saved frame (interior cells only) to an already-open stream,
+// followed by a blank line separator.
+void save_frame_txt(std::ofstream &output, const std::vector<double> &data,
+                    int N);
+
 template <typename Function>
-void simulate_diffusion(
-    std::vector<std::vector<std::vector<double>>> &u_history,
-    std::vector<std::vector<std::vector<double>>> &v_history,
-    std::vector<std::vector<double>> &u_init,
-    std::vector<std::vector<double>> &v_init, int t_num, int save_every,
-    double u_coefficient, double v_coefficient, double f_rate, double k_rate,
-    double dt, Function update_ghost_boundaries) {
-  int n_columns = u_init[0].size();
-  int n_rows = u_init.size();
+void simulate_gray_scott(std::ofstream &u_out, std::ofstream &v_out,
+                         std::vector<double> &u_init,
+                         std::vector<double> &v_init, int N, int t_num,
+                         int save_every, double u_coefficient,
+                         double v_coefficient, double f_rate, double k_rate,
+                         double dt, Function update_ghost_boundaries) {
 
-  u_history[0] = u_init;
-  v_history[0] = v_init;
-  std::vector<std::vector<double>> u_old = u_init;
-  std::vector<std::vector<double>> v_old = v_init;
-  std::vector<std::vector<double>> u_new(n_rows,
-                                         std::vector<double>(n_columns));
-  std::vector<std::vector<double>> v_new(n_rows,
-                                         std::vector<double>(n_columns));
+  update_ghost_boundaries(u_init, N);
+  update_ghost_boundaries(v_init, N);
 
-  int t_save_index = 1;
+  // save initial condition
+  save_frame_txt(u_out, u_init, N);
+  save_frame_txt(v_out, v_init, N);
+  std::vector<double> u_old = u_init;
+  std::vector<double> v_old = v_init;
+  std::vector<double> u_new(N * N);
+  std::vector<double> v_new(N * N);
+
   for (int t = 1; t < t_num; t++) {
-    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, n_rows, n_columns);
-    update_ghost_boundaries(u_new);
-    update_ghost_boundaries(v_new);
-    diffusion_step(u_old, u_new, v_old, v_new, u_coefficient, v_coefficient,
-                   n_rows, n_columns);
+    // reaction step computed for half time step, in-place on u_old, v_old
+    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, N);
+    update_ghost_boundaries(u_old, N);
+    update_ghost_boundaries(v_old, N);
 
-    update_ghost_boundaries(u_new);
-    update_ghost_boundaries(v_new);
+    // diffusion step computed for the whole time step, reads u_old and writes
+    // u_new
+    diffusion_step(u_old, u_new, v_old, v_new, u_coefficient, v_coefficient, N);
+    update_ghost_boundaries(u_new, N);
+    update_ghost_boundaries(v_new, N);
     std::swap(u_old, u_new);
     std::swap(v_old, v_new);
-    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, n_rows, n_columns);
+
+    // reaction step computed for half time step, in-place on u_old, v_old
+    reaction_step(u_old, v_old, f_rate, k_rate, dt / 2, N);
+
+    // save data
     if (t % save_every == 0) {
-      assert(t_save_index < u_history.size());
-      assert(t_save_index < v_history.size());
-      u_history[t_save_index] = u_old;
-      v_history[t_save_index] = v_old;
-      t_save_index++;
+      save_frame_txt(u_out, u_old, N);
+      save_frame_txt(v_out, v_old, N);
     }
   }
 }
@@ -156,8 +157,8 @@ void simulate_diffusion(
 //                          scheme (D*dt/dx^2).
 // @return                  New value of the concentration at the cell (i, j).
 //
-double diffusion_update(const std::vector<std::vector<double>> &matrix, int i,
-                        int j, double coefficient);
+double diffusion_update(const std::vector<double> &grid, int i, int j,
+                        double coefficient, int N);
 
 //
 // Performs the update rule for a single interior cell in the u and v
@@ -204,7 +205,7 @@ void compute_jacobian(double u_ij_new, double v_ij_new, double dt,
 //
 // @param matrix            Matrix in which ghost boundaries will be updated.
 //
-void update_periodic_boundaries(std::vector<std::vector<double>> &matrix);
+void update_periodic_boundaries(std::vector<double> &grid, int N);
 
 // Update ghost columns to enforce zero-flux Neumann boundary conditions in x
 // and y. The matrix is expected to have ghost columns at indices 0 and
@@ -216,7 +217,7 @@ void update_periodic_boundaries(std::vector<std::vector<double>> &matrix);
 // @param matrix            Matrix in which ghost boundaries will be updated.
 //
 
-void update_insulated_boundaries(std::vector<std::vector<double>> &matrix);
+void update_insulated_boundaries(std::vector<double> &grid, int N);
 
 // Save simulation data to a text file. Ghost columns (first and last
 // columns) are omitted when writing.
@@ -224,14 +225,12 @@ void update_insulated_boundaries(std::vector<std::vector<double>> &matrix);
 // @param data_collector    Vector of system states at each saved step.
 // @param output_filename   Path to the output file.
 //
-void initialize(std::vector<std::vector<double>> &u_init,
-                std::vector<std::vector<double>> &v_init, double width,
-                double u_value, double v_value, double perturbation,
-                std::mt19937 &rng);
+void initialize(std::vector<double> &u_init, std::vector<double> &v_init,
+                double width, double u_value, double v_value,
+                double perturbation, std::mt19937 &rng, int N);
 
-void save_data_txt(
-    const std::vector<std::vector<std::vector<double>>> &data_collector,
-    const std::string &output_filename);
+void save_data_txt(const std::vector<std::vector<double>> &data_collector,
+                   const std::string &output_filename, int N);
 
 // Save simulation metadata to text files.
 //
@@ -246,6 +245,7 @@ void save_data_txt(
 void save_metadata_txt(int x_num, int t_save, double x_delta,
                        double t_delta_save, double u_diff_constant,
                        double v_diff_constant, double f_rate, double k_rate,
+                       double perturbation,
                        const std::string &output_filename_xt,
                        const std::string &output_filename_params);
 

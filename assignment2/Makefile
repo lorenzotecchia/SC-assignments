@@ -1,4 +1,4 @@
-CXX        := g++-15
+CXX        := $(shell command -v g++-15 >/dev/null 2>&1 && echo g++-15 || echo g++)
 CXXFLAGS   := -std=c++20 -Wall -Wextra -O2 -fopenmp
 EIGEN_INC  := -I/opt/homebrew/include/eigen3
 BLAS_INC   := -I/opt/homebrew/opt/openblas/include
@@ -12,7 +12,7 @@ PLOT_DIR   := $(OUT_DIR)/plots
 
 ALL_FLAGS  := $(CXXFLAGS) $(EIGEN_INC) $(BLAS_INC) $(BLAS_FLAGS) -I$(SRC_DIR)
 
-.PHONY: all build run plot clean cg eta sweep scaling
+.PHONY: all build run plot clean cg eta sweep scaling gray_scott
 
 # ── DLA (Diffusion-Limited Aggregation) ───────────────────────────────
 
@@ -38,6 +38,29 @@ run: $(DLA_OUTPUTS)
 plot: $(DLA_OUTPUTS)
 	@echo "plot:  dla"
 	@$(PYTHON) scripts/plot_dla.py
+
+# ── Gray-Scott reaction-diffusion ────────────────────────────────────
+
+GS_BIN    := gray_scott_cpp
+GS_SRCS   := $(SRC_DIR)/main_gray_scott.cpp $(SRC_DIR)/gray_scott.cpp
+
+GS_PARAMS := 0.014,0.040 0.014,0.041 0.014,0.042 \
+             0.022,0.051 0.023,0.051 0.025,0.051 \
+             0.034,0.060 0.035,0.058 0.035,0.059 \
+             0.035,0.060 0.036,0.060
+
+$(GS_BIN): $(GS_SRCS) $(SRC_DIR)/gray_scott.hpp
+	@echo "build: $(GS_BIN)"
+	@$(CXX) $(CXXFLAGS) -I$(SRC_DIR) -o $@ $(GS_SRCS)
+
+gray_scott: $(GS_BIN) | $(OUT_DIR)
+	@for pair in $(GS_PARAMS); do \
+		F=$${pair%%,*}; K=$${pair##*,}; \
+		echo "run:   gray_scott F=$$F K=$$K"; \
+		./$(GS_BIN) $$F $$K; \
+	done
+	@echo "plot:  gray_scott"
+	@$(PYTHON) scripts/gray_scott_plot.py
 
 # ── Sweep benchmark (eta × omega) ────────────────────────────────────
 
@@ -101,7 +124,7 @@ $(OUT_DIR):
 	@mkdir -p $(OUT_DIR) $(PLOT_DIR)
 
 clean:
-	@rm -f $(DLA_BIN) $(SWEEP_BIN) $(CG_BIN) $(SCALE_BIN)
+	@rm -f $(DLA_BIN) $(SWEEP_BIN) $(CG_BIN) $(SCALE_BIN) $(GS_BIN)
 	@rm -f $(OUT_DIR)/*.txt $(OUT_DIR)/*.csv
 	# @rm -f $(PLOT_DIR)/*.png $(PLOT_DIR)/*.gif
 	@echo "clean: done"
