@@ -74,37 +74,8 @@ python3 scripts/gray_scott_plot.py   # generate comparison plots
 
 ---
 
-## Gray-Scott model
+## Animations
 
-A 2-D reaction-diffusion system on a 512×512 grid with insulated boundaries. Two chemicals (U, V) diffuse and react according to:
-
-- **U**: D_u = 0.16, fed at rate *f*
-- **V**: D_v = 0.08, killed at rate *k*
-
-Time integration uses operator splitting: reaction (half Δt) → diffusion (full Δt) → reaction (half Δt), with Newton's implicit method for the reaction step.
-
-### Parameter combinations
-
-| Feed rate *f* | Kill rates *k* |
-|---|---|
-| 0.014 | 0.040, 0.041, 0.042 |
-| 0.022, 0.023, 0.025 | 0.051 |
-| 0.034, 0.035, 0.036 | 0.060 |
-| 0.035 | 0.057, 0.058, 0.059 |
-
-### Output files
-
-Each run produces files with suffix `_f{f}_k{k}`:
-
-| File | Content |
-|---|---|
-| `gray_scott_u_data_f*_k*.txt` | U concentration frames (512 lines × 100 frames) |
-| `gray_scott_v_data_f*_k*.txt` | V concentration frames |
-| `gray_scott_params_f*_k*.txt` | Simulation metadata (JSON) |
-| `gray_scott_comparison_*.eps` | 2×3 comparison plots |
-| `gray_scott_animation_f*_k*.mp4` | U & V concentration animation |
-
----
 
 ## Dependencies
 
