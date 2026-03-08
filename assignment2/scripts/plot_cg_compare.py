@@ -89,8 +89,8 @@ except Exception:
 fig.suptitle(f"DLA Solver Comparison ({n_seeds} seeds)",
              fontsize=15, y=1.01)
 fig.tight_layout()
-fig.savefig("output/plots/cg_compare.png", dpi=150, bbox_inches="tight")
-print("saved output/plots/cg_compare.png")
+fig.savefig("output/plots/cg_compare.eps", dpi=150, bbox_inches="tight")
+print("saved output/plots/cg_compare.eps")
 plt.close("all")
 
 # ── DLA animation from CG solver ─────────────────────────────────────────────
@@ -159,6 +159,6 @@ def update(frame_idx):
 
 anim = FuncAnimation(fig, update, frames=len(snapshots),
                      interval=100, blit=False, repeat=True)
-anim.save("output/plots/cg_dla_animation.gif", writer="pillow", fps=10, dpi=100)
-print(f"saved output/plots/cg_dla_animation.gif ({len(snapshots)} frames)")
+anim.save("output/plots/cg_dla_animation.mp4", writer="ffmpeg", fps=10, dpi=100)
+print(f"saved output/plots/cg_dla_animation.mp4 ({len(snapshots)} frames)")
 plt.close("all")

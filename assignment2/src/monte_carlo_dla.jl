@@ -230,7 +230,7 @@ function animate_clusters_ps(probabilities)
             plot!(pl[i], aspect_ratio=1)
         end
     end
-    gif(anim, "output/plots/dla_clusters.gif", fps=10)
+    mp4(anim, "output/plots/dla_clusters.mp4", fps=10)
 end
 
 

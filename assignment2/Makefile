@@ -126,5 +126,5 @@ $(OUT_DIR):
 clean:
 	@rm -f $(DLA_BIN) $(SWEEP_BIN) $(CG_BIN) $(SCALE_BIN) $(GS_BIN)
 	@rm -f $(OUT_DIR)/*.txt $(OUT_DIR)/*.csv
-	# @rm -f $(PLOT_DIR)/*.png $(PLOT_DIR)/*.gif
+	# @rm -f $(PLOT_DIR)/*.eps $(PLOT_DIR)/*.mp4
 	@echo "clean: done"

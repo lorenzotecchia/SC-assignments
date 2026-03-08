@@ -78,8 +78,8 @@ ax.set_title(r"SOR iterations vs $\omega$ for different $\eta$")
 ax.legend()
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
-fig.savefig(OUT_DIR / "sweep_sor_iters_vs_omega.png", dpi=150)
-print(f"saved {OUT_DIR / 'sweep_sor_iters_vs_omega.png'}")
+fig.savefig(OUT_DIR / "sweep_sor_iters_vs_omega.eps", dpi=150)
+print(f"saved {OUT_DIR / 'sweep_sor_iters_vs_omega.eps'}")
 plt.close(fig)
 
 # ── Plot 2: SOR time vs omega, one line per eta ─────────────────────
@@ -97,8 +97,8 @@ ax.set_title(r"SOR wall time vs $\omega$ for different $\eta$")
 ax.legend()
 ax.grid(True, alpha=0.3)
 fig.tight_layout()
-fig.savefig(OUT_DIR / "sweep_sor_time_vs_omega.png", dpi=150)
-print(f"saved {OUT_DIR / 'sweep_sor_time_vs_omega.png'}")
+fig.savefig(OUT_DIR / "sweep_sor_time_vs_omega.eps", dpi=150)
+print(f"saved {OUT_DIR / 'sweep_sor_time_vs_omega.eps'}")
 plt.close(fig)
 
 # ── Plot 3: SOR (best omega) vs RB-GS — iterations ──────────────────
@@ -140,8 +140,8 @@ ax2.legend()
 ax2.grid(True, alpha=0.3, axis="y")
 
 fig.tight_layout()
-fig.savefig(OUT_DIR / "sweep_sor_vs_rbgs.png", dpi=150)
-print(f"saved {OUT_DIR / 'sweep_sor_vs_rbgs.png'}")
+fig.savefig(OUT_DIR / "sweep_sor_vs_rbgs.eps", dpi=150)
+print(f"saved {OUT_DIR / 'sweep_sor_vs_rbgs.eps'}")
 plt.close(fig)
 
 # ── Plot 4: 3D surface — iterations(eta, omega) ─────────────────────
@@ -166,6 +166,6 @@ ax.set_title(r"SOR iterations over $(\omega, \eta)$ grid")
 ax.view_init(elev=25, azim=-50)
 
 fig.tight_layout()
-fig.savefig(OUT_DIR / "sweep_3d_iters.png", dpi=150)
-print(f"saved {OUT_DIR / 'sweep_3d_iters.png'}")
+fig.savefig(OUT_DIR / "sweep_3d_iters.eps", dpi=150)
+print(f"saved {OUT_DIR / 'sweep_3d_iters.eps'}")
 plt.close(fig)

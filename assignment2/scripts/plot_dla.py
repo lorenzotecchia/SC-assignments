@@ -64,8 +64,8 @@ ax.grid(True, alpha=0.3)
 
 fig.suptitle(f"DLA SOR Performance ({n_seeds} seeds)", fontsize=15, y=1.02)
 fig.tight_layout()
-fig.savefig("output/plots/dla_multi_sor.png", dpi=150, bbox_inches="tight")
-print("saved output/plots/dla_multi_sor.png")
+fig.savefig("output/plots/dla_multi_sor.eps", dpi=150, bbox_inches="tight")
+print("saved output/plots/dla_multi_sor.eps")
 plt.close("all")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -146,6 +146,6 @@ anim = FuncAnimation(
     interval=100, blit=False, repeat=True,
 )
 
-anim.save("output/plots/dla_animation.gif", writer="pillow", fps=10, dpi=100)
-print(f"saved output/plots/dla_animation.gif ({len(snapshots)} frames)")
+anim.save("output/plots/dla_animation.mp4", writer="ffmpeg", fps=10, dpi=100)
+print(f"saved output/plots/dla_animation.mp4 ({len(snapshots)} frames)")
 plt.close("all")

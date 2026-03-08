@@ -40,6 +40,6 @@ ax.grid(True, alpha=0.3, which="both")
 
 fig.suptitle("DLA Grid-Size Scaling", fontsize=16, y=1.02)
 fig.tight_layout()
-fig.savefig("output/plots/scaling.png", dpi=150, bbox_inches="tight")
-print("saved output/plots/scaling.png")
+fig.savefig("output/plots/scaling.eps", dpi=150, bbox_inches="tight")
+print("saved output/plots/scaling.eps")
 plt.close("all")

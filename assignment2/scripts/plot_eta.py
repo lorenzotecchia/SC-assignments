@@ -44,8 +44,8 @@ for ax, mask, ev in zip(axes, clusters, loaded_etas):
 axes[0].set_ylabel("y")
 fig.suptitle("DLA Clusters at Different η Values", fontsize=16, y=1.02)
 fig.tight_layout()
-fig.savefig("output/plots/eta_clusters.png", dpi=150, bbox_inches="tight")
-print("saved output/plots/eta_clusters.png")
+fig.savefig("output/plots/eta_clusters.eps", dpi=150, bbox_inches="tight")
+print("saved output/plots/eta_clusters.eps")
 plt.close("all")
 
 # ── 2. Load and plot concentration fields if available ────────────────────────
@@ -77,7 +77,7 @@ if concs:
     fig2.suptitle("Concentration Fields at Different η Values",
                   fontsize=16, y=1.02)
     fig2.tight_layout()
-    fig2.savefig("output/plots/eta_concentrations.png", dpi=150,
+    fig2.savefig("output/plots/eta_concentrations.eps", dpi=150,
                  bbox_inches="tight")
-    print("saved output/plots/eta_concentrations.png")
+    print("saved output/plots/eta_concentrations.eps")
     plt.close("all")
