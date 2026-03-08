@@ -76,17 +76,24 @@ python3 scripts/gray_scott_plot.py   # generate comparison plots
 
 ## Animations
 
-<p align="center">
-  <video src="https://github.com/lorenzotecchia/SC-assignments/blob/main/assignment2/output/gray_scott_animation_f0.014_k0.040.mp4"
-         width="700"
-         controls
-         loop
-         muted
-         playsinline>
-    Your browser does not support the video tag. Download:
-    <a href="https://github.com/lorenzotecchia/SC-assignments/blob/main/assignment2/output/gray_scott_animation_f0.014_k0.040.mp4">mp4</a>.
-  </video>
-</p>
+$\epsilon$ pattern
+![animation5](output/plots/gray_scott_animation_f0.014_k0.040.gif)
+
+
+$\alpha$ or $\xi$ pattern
+![animation5](output/plots/gray_scott_animation_f0.014_k0.042.gif)
+
+
+$\theta$ pattern
+![animation5](output/plots/gray_scott_animation_f0.022_k0.051.gif)
+
+
+$\delta$ pattern
+![animation5](output/plots/gray_scott_animation_f0.035_k0.057.gif)
+
+$\kappa$ pattern
+![animation5](output/plots/gray_scott_animation_f0.035_k0.060.gif)
+
 
 ## Dependencies
 
