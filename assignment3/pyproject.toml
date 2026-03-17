@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "matplotlib>=3.10.8",
+    "ngsolve>=6.2.2602.post2",
     "taichi>=1.7.4",
 ]

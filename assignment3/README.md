@@ -1,47 +1,100 @@
-# LBM_Taichi
+# Assignment 3
 
-This script implements a 2d fluid solver based on [Lattice Boltzmann method](https://en.wikipedia.org/wiki/Lattice_Boltzmann_methods) using [Taichi](https://github.com/taichi-dev/taichi) programming language. The high-performance cross-platform CFD (computational fluid dynamics) solver can be achieved within 200 lines thanks to taichi.
+Kármán vortex street simulations for the 2026 Scientific Computing course.
+Two independent solvers — a GPU-accelerated Lattice Boltzmann Method and a finite-element Navier-Stokes solver — both targeting the same benchmark flow.
 
+---
 
-## Usage
-To numerically solve a fluid-dynamics problem, the domain size, fluid property, boundary conditions and initial conditions should be given. In this code, these parameters can be specified by instancing the solver:
-```
-lbm = lbm_solver(nx, ny, niu, bc_type, bc_value)
-```
-The meaning of each parameter is:
-- ``nx``, ``ny`` define domain size. Note that they are given in dimensionless form (ie. lattice units), which assumes ``dx = dy = dt = 1.0``, where ``dx`` and ``dy`` are discrete grid sizes, ``dt`` is the time interval of one step.
-- ``niu`` is the fluid viscosity in lattice units. Note there is a transformation between SI units and lattice units.
-- ``bc_type`` is a four-element python list denoting the ``[left, top, right, bottom]`` boundary condition type. The velocity at the boundary is set based on ``bc_type``. If ``bc_type = 0``, velocity is set as constant value (Dirichlet condition ) given in ``bc_value``. If ``bc_type = 1``, the derivative of velocity in boundary normal direction is set to zero (Neumann condition).
-- ``bc_value`` is a ``(4,2)`` python list, it gives constant velocity value at each boundary when ``bc_type = 0``.
+## How to run
 
-## Example1: Lid-driven Cavity Flow
-<div align="center">
-<img src="https://raw.githubusercontent.com/hietwll/common_files/master/graphics/lbm_taichi/LidDrivenCavity.png" height="300px">
-</div>
+Install dependencies with [uv](https://github.com/astral-sh/uv):
 
-Lid-driven cavity flow is benchmark fluid-dynamics problem used to verify the solver accuracy. To compare simulation results based on different unit-systems, the flow Reynolds number ``Re`` should keep the same. In this case, ``Re`` is defined as ``Re = U * L / niu``, so a solver with `` Re = 1000 `` can be given by:
-```
-lbm = lbm_solver(256, 256, 0.0255, [0, 0, 0, 0], 
-      [[0.0, 0.0], [0.1, 0.0], [0.0, 0.0], [0.0, 0.0]])
-```
-Here ``Re = U * (nx-1) * dx / niu = 0.1 * 255.0 / 0.0255``. The velocity magnitude is shown in the contour below and x-component of velocity in the middle line is compared with result from literature.
-
-<div align="center">
-<img src="https://raw.githubusercontent.com/hietwll/common_files/master/graphics/lbm_taichi/lid.gif" height="260px"> <img src="https://raw.githubusercontent.com/hietwll/common_files/master/graphics/lbm_taichi/lid_validation.png" height="260px">
-</div>
-
-## Example2: Kármán Vortex Street
-<div align="center">
-<img src="https://raw.githubusercontent.com/hietwll/common_files/master/graphics/lbm_taichi/VortexStreet.jpg" height="200px">
-</div>
-
-Kármán vortex street is an interesting phenomenon in fluid dynamics. When fluids flow pass blunt body (say a cylinder), there exists a repeating pattern of swirling vortices, caused by a process known as vortex shedding. The Reynolds number of this flow is defined as ``Re = U * D / niu``, where ``D`` means diameter. A solver with ``Re = 200`` can be given by:
-```
-lbm = lbm_solver(401, 101, 0.005, [0, 0, 1, 0],
-      [[0.1, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
-      1, [80.0, 50.0, 10.0])
+```bash
+uv sync
 ```
 
-<div align="center">
-<img src="https://raw.githubusercontent.com/hietwll/common_files/master/graphics/lbm_taichi/karman.gif" height="250px">
-</div>
+### LBM solver (Taichi, interactive GUI)
+
+```bash
+# Kármán Vortex Street — default Re=400
+uv run python taichi_lbm.py 0
+
+# Kármán Vortex Street — custom Reynolds number
+uv run python taichi_lbm.py 0 200
+
+# Lid-driven Cavity Flow — Re=1000
+uv run python taichi_lbm.py 1
+```
+
+Press `ESC` or close the window to exit.
+
+### NGSolve FEM solver (headless, batch output)
+
+```bash
+# default Re=100, dt=0.0005, tend=8.0
+uv run python vortex.py
+
+# custom parameters
+uv run python vortex.py --Re 200 --dt 0.0005 --tend 8.0 --order 2 --maxh 0.07
+uv run python vortex.py --help   # full option list
+```
+
+Output is written to `karman_output/` (VTK time series, drag/lift CSV, and plots).
+Open the result in ParaView:
+
+```bash
+paraview karman_output/karman.pvd
+```
+
+---
+
+## Repository structure
+
+```
+.
+├── taichi_lbm.py       # D2Q9 LBM solver — GPU via Taichi, interactive visualisation
+├── vortex.py           # Taylor-Hood FEM solver — NGSolve, headless batch run
+├── data/
+│   └── ghia1982.dat    # Ghia et al. (1982) reference data for lid-driven cavity validation
+├── docs/
+│   └── reference.md    # upstream Taichi LBM README (original source / theory)
+├── karman_output/      # FEM solver output: *.vtu, *.pvd, drag_lift.csv, drag.png, lift.png
+├── pyproject.toml
+└── uv.lock
+```
+
+### `taichi_lbm.py` — Lattice Boltzmann Method
+
+| Case | `flow_case` | Grid | Re |
+|---|---|---|---|
+| Kármán Vortex Street | `0` | 801 × 201 | configurable (default 400) |
+| Lid-driven Cavity | `1` | 256 × 256 | 1000 |
+
+### `vortex.py` — NGSolve FEM (Navier-Stokes)
+
+Taylor-Hood P(k)/P(k-1) elements, IMEX-1 time integration, Schäfer-Turek benchmark geometry (2.2 × 0.41 m channel, cylinder diameter 0.1 m at (0.2, 0.2)).
+
+| Option | Default | Description |
+|---|---|---|
+| `--Re` | 100 | Reynolds number |
+| `--dt` | 0.0005 | Time step (s) |
+| `--tend` | 8.0 | End time (s) |
+| `--order` | 2 | FE polynomial order for velocity |
+| `--maxh` | 0.07 | Max mesh element size |
+| `--vtk-interval` | 50 | Write VTK every N steps |
+
+---
+
+## Dependencies
+
+- **Python ≥ 3.12** managed with [uv](https://github.com/astral-sh/uv)
+- `taichi ≥ 1.7.4` — GPU kernel compilation (CUDA / Metal / Vulkan)
+- `ngsolve ≥ 6.2` — finite element framework
+- `matplotlib ≥ 3.10`
+- **ParaView** — required to visualise the VTK output of `vortex.py` (`karman_output/*.pvd`). Install from [paraview.org](https://www.paraview.org/download/) or via your system package manager (`brew install paraview`, `apt install paraview`, etc.). Not managed by uv.
+
+---
+
+## Contributors
+
+[![git-fame](https://git-fame.cdcl.ml/gh/lorenzotecchia/SC-assignments)](https://github.com/lorenzotecchia/SC-assignments)
