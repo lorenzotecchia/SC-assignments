@@ -25,6 +25,7 @@ class lbm_solver:
         bc_value,  # if bc_type = 0, we need to specify the velocity in bc_value
         cy=0,  # whether to place a cylindrical obstacle
         cy_para=[0.0, 0.0, 0.0],  # location and radius of the cylinder
+        C_smag=0.0,  # Smagorinsky constant (0 = disabled)
     ):
         self.name = name
         self.nx = nx  # by convention, dx = dy = dt = 1.0 (lattice units)
@@ -32,11 +33,15 @@ class lbm_solver:
         self.niu = niu
         self.tau = 3.0 * niu + 0.5
         self.inv_tau = 1.0 / self.tau
+        self.C_smag = C_smag
         self.rho = ti.field(float, shape=(nx, ny))
         self.vel = ti.Vector.field(2, float, shape=(nx, ny))
         self.mask = ti.field(float, shape=(nx, ny))
         self.f_old = ti.Vector.field(9, float, shape=(nx, ny))
         self.f_new = ti.Vector.field(9, float, shape=(nx, ny))
+        self.tau_eff = ti.field(
+            float, shape=(nx, ny)
+        )  # per-cell effective relaxation time
         self.w = (
             ti.types.vector(9, float)(4, 1, 1, 1, 1, 1 / 4, 1 / 4, 1 / 4, 1 / 4) / 9.0
         )
@@ -70,15 +75,41 @@ class lbm_solver:
                     self.mask[i, j] = 1.0
 
     @ti.kernel
+    def compute_tau_sgs(self):  # Smagorinsky eddy-viscosity correction
+        for i, j in ti.ndrange((1, self.nx - 1), (1, self.ny - 1)):
+            f = self.f_old[i, j]  # whole local vector — no SNode alias issue
+            feq = self.f_eq(i, j)
+            Q_xx = 0.0
+            Q_yy = 0.0
+            Q_xy = 0.0
+            for k in ti.static(range(9)):
+                fneq = f[k] - feq[k]
+                Q_xx += float(self.e[k, 0] * self.e[k, 0]) * fneq
+                Q_yy += float(self.e[k, 1] * self.e[k, 1]) * fneq
+                Q_xy += float(self.e[k, 0] * self.e[k, 1]) * fneq
+            pi_neq = tm.sqrt(Q_xx**2 + Q_yy**2 + 2.0 * Q_xy**2)
+            tau0 = self.tau
+            self.tau_eff[i, j] = 0.5 * (
+                tau0
+                + tm.sqrt(tau0**2 + 18.0 * self.C_smag**2 * pi_neq / self.rho[i, j])
+            )
+
+    @ti.kernel
+    def init_tau_eff(self):  # fill tau_eff with base tau before first SGS pass
+        for i, j in self.tau_eff:
+            self.tau_eff[i, j] = self.tau
+
+    @ti.kernel
     def collide_and_stream(self):  # lbm core equation
         for i, j in ti.ndrange((1, self.nx - 1), (1, self.ny - 1)):
             for k in ti.static(range(9)):
                 ip = i - self.e[k, 0]
                 jp = j - self.e[k, 1]
                 feq = self.f_eq(ip, jp)
-                self.f_new[i, j][k] = (1 - self.inv_tau) * self.f_old[ip, jp][k] + feq[
+                inv_tau_local = 1.0 / self.tau_eff[ip, jp]
+                self.f_new[i, j][k] = (1 - inv_tau_local) * self.f_old[ip, jp][k] + feq[
                     k
-                ] * self.inv_tau
+                ] * inv_tau_local
 
     @ti.kernel
     def update_macro_var(self):  # compute rho u v
@@ -146,8 +177,11 @@ class lbm_solver:
     def solve(self):
         gui = ti.GUI(self.name, (self.nx, 2 * self.ny))
         self.init()
+        self.init_tau_eff()
         while not gui.get_event(ti.GUI.ESCAPE, ti.GUI.EXIT):
-            for _ in range(10):
+            for _ in range(100):
+                if self.C_smag > 0.0:
+                    self.compute_tau_sgs()
                 self.collide_and_stream()
                 self.update_macro_var()
                 self.apply_bc()
@@ -180,13 +214,35 @@ class lbm_solver:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="D2Q9 LBM fluid solver")
-    parser.add_argument("flow_case", nargs="?", type=int, default=0,
-                        help="0 = Kármán Vortex Street, 1 = Lid-driven Cavity (default: 0)")
-    parser.add_argument("Re", nargs="?", type=float, default=400.0,
-                        help="Reynolds number for flow_case=0 (default: 400)")
-    parser.add_argument("--scale", type=float, default=1.0,
-                        help="Grid refinement factor: multiplies nx, ny, D and cylinder "
-                             "geometry proportionally. scale=2 doubles the Re ceiling. (default: 1.0)")
+    parser.add_argument(
+        "flow_case",
+        nargs="?",
+        type=int,
+        default=0,
+        help="0 = Kármán Vortex Street, 1 = Lid-driven Cavity (default: 0)",
+    )
+    parser.add_argument(
+        "Re",
+        nargs="?",
+        type=float,
+        default=400.0,
+        help="Reynolds number for flow_case=0 (default: 400)",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="Grid refinement factor: multiplies nx, ny, D and cylinder "
+        "geometry proportionally. scale=2 doubles the Re ceiling. (default: 1.0)",
+    )
+    parser.add_argument(
+        "--C-smag",
+        type=float,
+        default=0.0,
+        dest="C_smag",
+        help="Smagorinsky constant for LES eddy-viscosity model "
+        "(0 = disabled, typical value 0.1). (default: 0.0)",
+    )
     args = parser.parse_args()
 
     if args.flow_case == 0:  # von Karman vortex street
@@ -198,23 +254,30 @@ if __name__ == "__main__":
         ny = int(201 * s)
         cx = 160.0 * s
         cy = 100.0 * s
-        r  = 20.0 * s
+        r = 20.0 * s
         niu = U * D / args.Re
         tau = 3.0 * niu + 0.5
-        print(f"Kármán Vortex Street | Re={args.Re:.1f}  scale={s}  "
-              f"grid={nx}×{ny}  D={D:.0f}  niu={niu:.6f}  tau={tau:.6f}")
+        smag_str = f"  C_smag={args.C_smag}" if args.C_smag > 0.0 else ""
+        print(
+            f"Kármán Vortex Street | Re={args.Re:.1f}  scale={s}  "
+            f"grid={nx}×{ny}  D={D:.0f}  niu={niu:.6f}  tau={tau:.6f}{smag_str}"
+        )
         if tau <= 0.5:
-            print("ERROR: tau <= 0.5, simulation will be unstable. "
-                  "Lower Re or increase --scale.")
+            print(
+                "ERROR: tau <= 0.5, simulation will be unstable. "
+                "Lower Re or increase --scale."
+            )
             sys.exit(1)
         lbm = lbm_solver(
             f"Kármán Vortex Street Re={args.Re:.0f} scale={s}",
-            nx, ny,
+            nx,
+            ny,
             niu,
             [0, 0, 1, 0],
             [[U, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
             1,
             [cx, cy, r],
+            C_smag=args.C_smag,
         )
         lbm.solve()
     elif args.flow_case == 1:  # lid-driven cavity flow: Re = U*L/niu = 1000
