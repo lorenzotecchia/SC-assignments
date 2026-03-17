@@ -108,7 +108,7 @@ X = V * Q
 (u, p), (v, q) = X.TnT()
 
 ndof = X.ndof
-print(f"       V order={k}, Q order={k-1}, total DOFs = {ndof}")
+print(f"       V order={k}, Q order={k - 1}, total DOFs = {ndof}")
 
 # ─────────────────────────────────────────────
 # 3. Forms & Initial Conditions (Stokes solve)
