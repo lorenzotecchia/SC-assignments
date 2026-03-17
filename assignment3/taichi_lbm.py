@@ -1,6 +1,7 @@
 # Fluid solver based on lattice boltzmann method using taichi language
 # Author : Wang (hietwll@gmail.com)
 
+import argparse
 import sys
 
 import matplotlib
@@ -178,29 +179,45 @@ class lbm_solver:
 
 
 if __name__ == "__main__":
-    flow_case = 0 if len(sys.argv) < 2 else int(sys.argv[1])
-    if flow_case == 0:  # von Karman vortex street, Re specified via argv[2]
+    parser = argparse.ArgumentParser(description="D2Q9 LBM fluid solver")
+    parser.add_argument("flow_case", nargs="?", type=int, default=0,
+                        help="0 = Kármán Vortex Street, 1 = Lid-driven Cavity (default: 0)")
+    parser.add_argument("Re", nargs="?", type=float, default=400.0,
+                        help="Reynolds number for flow_case=0 (default: 400)")
+    parser.add_argument("--scale", type=float, default=1.0,
+                        help="Grid refinement factor: multiplies nx, ny, D and cylinder "
+                             "geometry proportionally. scale=2 doubles the Re ceiling. (default: 1.0)")
+    args = parser.parse_args()
+
+    if args.flow_case == 0:  # von Karman vortex street
+        s = args.scale
         U = 0.1
-        D = 40.0  # cylinder diameter in lattice units (radius = 20)
-        Re = 400.0 if len(sys.argv) < 3 else float(sys.argv[2])
-        niu = U * D / Re
+        # Base geometry (scale=1): 801×201, cylinder D=40 at (160, 100) r=20
+        D = 40.0 * s
+        nx = int(801 * s)
+        ny = int(201 * s)
+        cx = 160.0 * s
+        cy = 100.0 * s
+        r  = 20.0 * s
+        niu = U * D / args.Re
         tau = 3.0 * niu + 0.5
-        print(f"Karman Vortex Street | Re={Re:.1f}  niu={niu:.6f}  tau={tau:.6f}")
+        print(f"Kármán Vortex Street | Re={args.Re:.1f}  scale={s}  "
+              f"grid={nx}×{ny}  D={D:.0f}  niu={niu:.6f}  tau={tau:.6f}")
         if tau <= 0.5:
-            print("ERROR: tau <= 0.5, simulation will be unstable. Increase Re less aggressively.")
+            print("ERROR: tau <= 0.5, simulation will be unstable. "
+                  "Lower Re or increase --scale.")
             sys.exit(1)
         lbm = lbm_solver(
-            f"Karman Vortex Street Re={Re:.0f}",
-            801,
-            201,
+            f"Kármán Vortex Street Re={args.Re:.0f} scale={s}",
+            nx, ny,
             niu,
             [0, 0, 1, 0],
             [[U, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0]],
             1,
-            [160.0, 100.0, 20.0],
+            [cx, cy, r],
         )
         lbm.solve()
-    elif flow_case == 1:  # lid-driven cavity flow: Re = U*L/niu = 1000
+    elif args.flow_case == 1:  # lid-driven cavity flow: Re = U*L/niu = 1000
         lbm = lbm_solver(
             "Lid-driven Cavity Flow",
             256,
@@ -212,5 +229,5 @@ if __name__ == "__main__":
         lbm.solve()
     else:
         print(
-            "Invalid flow case ! Please choose from 0 (Karman Vortex Street) and 1 (Lid-driven Cavity Flow)."
+            "Invalid flow case! Please choose 0 (Kármán Vortex Street) or 1 (Lid-driven Cavity)."
         )
