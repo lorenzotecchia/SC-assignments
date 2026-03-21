@@ -1,6 +1,7 @@
 #include "mac_grid.hpp"
 #include "pressure.hpp"
 #include "bc.hpp"
+#include "ns_solver.hpp"
 #include <cmath>
 #include <cassert>
 #include <cstdio>
@@ -44,7 +45,25 @@ static void test_poisson_manufactured() {
     printf("[test_poisson] PASS\n");
 }
 
+static void test_projection_divergence_free() {
+    // Build a tiny 20×10 grid, give it a non-zero-divergence u*, run one step,
+    // check divergence drops below 1e-3.
+    MacGrid g(20, 10, 2.0, 1.0, 0.5, 0.5, 0.05);
+    NSSolverConfig cfg{0.01, 0.001, 1.0, 1.8, 1e-6, 5000};
+    Eigen::MatrixXd Nu_prev = Eigen::MatrixXd::Zero(g.nx+1, g.ny);
+    Eigen::MatrixXd Nv_prev = Eigen::MatrixXd::Zero(g.nx, g.ny+1);
+
+    // Initialise with parabolic inflow
+    apply_velocity_bc(g, 1.0);
+    auto stats = ns_step(g, cfg, 0, Nu_prev, Nv_prev);
+
+    printf("[test_projection] div_max = %.2e  (expect < 1e-3)\n", stats.div_max);
+    assert(stats.div_max < 1e-3);
+    printf("[test_projection] PASS\n");
+}
+
 int main() {
     test_poisson_manufactured();
+    test_projection_divergence_free();
     return 0;
 }
