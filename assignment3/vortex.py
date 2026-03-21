@@ -144,6 +144,10 @@ inv_stokes = a.mat.Inverse(X.FreeDofs())
 gfu.vec.data += inv_stokes * res
 print("       Stokes initial solve complete.")
 
+# blowup baseline: 1e6 × initial energy as threshold
+_u_sq_init = InnerProduct(gfu.vec, gfu.vec)
+_blowup_threshold = max(1e8, 1e6 * _u_sq_init)
+
 # ─────────────────────────────────────────────
 # 4. Time-stepping setup (IMEX-1)
 # ─────────────────────────────────────────────
@@ -235,6 +239,20 @@ with TaskManager():
             supg_lf.Assemble()
             res.data += supg_lf.vec
         gfu.vec.data -= dt * inv * res
+
+        # ── blowup guardrail ──────────────────────────────────────────
+        # Catches NaN/Inf (isfinite) and runaway growth before NaN appears.
+        # Root cause when --supg is on: explicit SUPG adds an upwind-diffusion
+        # term that imposes a tighter stability constraint than convective CFL
+        # alone. Fix: reduce --dt, or halve --maxh to allow larger stable dt.
+        _u_sq = InnerProduct(gfu.vec, gfu.vec)
+        if not np.isfinite(_u_sq) or _u_sq > _blowup_threshold:
+            print(f"\n  *** DIVERGENCE at t={t + dt:.4f} s ***")
+            print(f"  ||u||² = {_u_sq:.3e}  (baseline {_u_sq_init:.3e})")
+            print(f"  CFL ≈ {dt * 1.5 / (args.maxh):.3f}  (should be < 0.5 with SUPG)")
+            print(f"  Suggestion: halve --dt (try --dt {dt/2:.5f}) or remove --supg.")
+            break
+        # ─────────────────────────────────────────────────────────────
 
         t += dt
         step += 1
