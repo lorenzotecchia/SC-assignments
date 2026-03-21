@@ -1,7 +1,7 @@
 # Assignment 3
 
 Kármán vortex street simulations for the 2026 Scientific Computing course.
-Two independent solvers — a GPU-accelerated Lattice Boltzmann Method and a finite-element Navier-Stokes solver — both targeting the same benchmark flow.
+Three independent solvers — a GPU-accelerated Lattice Boltzmann Method, a finite-element Navier-Stokes solver, and a finite-difference Navier-Stokes solver — all targeting the same Schäfer-Turek benchmark flow.
 
 ---
 
@@ -54,6 +54,11 @@ paraview karman_output/karman.pvd
 .
 ├── taichi_lbm.py       # D2Q9 LBM solver — GPU via Taichi, interactive visualisation
 ├── vortex.py           # Taylor-Hood FEM solver — NGSolve, headless batch run
+├── fd_ns/              # MAC FD solver — C++20/Eigen/OpenMP, headless batch run
+│   ├── Makefile
+│   ├── README.md       # theory, references, CLI docs
+│   ├── src/            # C++ source files
+│   └── output/         # drag_lift.csv, vorticity_*.txt
 ├── data/
 │   └── ghia1982.dat    # Ghia et al. (1982) reference data for lid-driven cavity validation
 ├── docs/
@@ -82,6 +87,27 @@ Taylor-Hood P(k)/P(k-1) elements, IMEX-1 time integration, Schäfer-Turek benchm
 | `--order` | 2 | FE polynomial order for velocity |
 | `--maxh` | 0.07 | Max mesh element size |
 | `--vtk-interval` | 50 | Write VTK every N steps |
+
+### `fd_ns/` — C++ Finite-Difference (Navier-Stokes)
+
+MAC staggered grid, fractional-step (Chorin projection), Adams-Bashforth 2 convection,
+SOR pressure Poisson. Same Schäfer-Turek geometry; targets Re up to ~3000.
+
+```bash
+cd fd_ns && make
+./fd_karman --Re 100 --tend 20.0          # Re=100 benchmark
+./fd_karman --Re 1000 --nx 880 --ny 164   # high-Re on refined grid
+```
+
+See [`fd_ns/README.md`](fd_ns/README.md) for full theory, CLI options, and references.
+
+| Option | Default | Description |
+|---|---|---|
+| `--Re` | 100 | Reynolds number |
+| `--nx` | 440 | Grid cells in x |
+| `--ny` | 82 | Grid cells in y |
+| `--dt` | 0.001 | Time step (s) |
+| `--tend` | 20.0 | End time (s) |
 
 ---
 
