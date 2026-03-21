@@ -229,7 +229,8 @@ wall_start = walltime.time()
 with TaskManager():
     while t < args.tend - 0.5 * dt:
         # IMEX step: residual = (A + C(u)) * u  [+ SUPG if enabled]
-        res = (a.mat + conv.mat) * gfu.vec
+        res = gfu.vec.CreateVector()
+        res.data = (a.mat + conv.mat) * gfu.vec
         if args.supg:
             supg_lf.Assemble()
             res.data += supg_lf.vec
