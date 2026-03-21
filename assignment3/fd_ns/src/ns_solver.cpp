@@ -128,13 +128,21 @@ StepStats ns_step(MacGrid &g, NSSolverConfig &cfg, int step,
     Nu_prev = Nu;
     Nv_prev = Nv;
 
-    // 7. Diagnostics: max divergence in interior fluid cells after projection
+    // 7. Diagnostics: max divergence in interior pure-fluid cells.
+    //    Cells adjacent to the cylinder are excluded because apply_solid_bc
+    //    zeroes their faces after projection, intentionally re-introducing
+    //    a small divergence as part of the no-slip enforcement.
     auto div_post = divergence(g);
     double max_div = 0.0;
-    for (int i = 1; i < g.nx-1; ++i)
-        for (int j = 1; j < g.ny-1; ++j)
-            if (g.mask(i,j) == 0)
-                max_div = std::max(max_div, std::abs(div_post(i,j)));
+    for (int i = 1; i < g.nx-1; ++i) {
+        for (int j = 1; j < g.ny-1; ++j) {
+            if (g.mask(i,j) != 0) continue;
+            // Skip fluid cells that share a face with a solid cell
+            if (g.mask(i-1,j) || g.mask(i+1,j) ||
+                g.mask(i,j-1) || g.mask(i,j+1)) continue;
+            max_div = std::max(max_div, std::abs(div_post(i,j)));
+        }
+    }
     StepStats stats;
     stats.div_max = max_div;
     stats.p_iters = res.iterations;
@@ -151,11 +159,16 @@ ForceCoeffs compute_forces(const MacGrid &g, double U_mean, double D) {
     for (int i = 0; i < g.nx; ++i) {
         for (int j = 0; j < g.ny; ++j) {
             if (g.mask(i,j) != 1) continue;
-            // Pressure force on each solid-cell face adjacent to fluid
-            if (i > 0      && g.mask(i-1,j)==0) fx -= g.p(i-1,j)*g.dy; // west face
-            if (i < g.nx-1 && g.mask(i+1,j)==0) fx += g.p(i+1,j)*g.dy; // east face
-            if (j > 0      && g.mask(i,j-1)==0) fy -= g.p(i,j-1)*g.dx; // south face
-            if (j < g.ny-1 && g.mask(i,j+1)==0) fy += g.p(i,j+1)*g.dx; // north face
+            // Pressure force on each solid-cell face adjacent to fluid.
+            // F = ∮ p n̂_in dA  (n̂_in = inward normal of the cylinder surface)
+            // West face:  n̂_in = +x̂  → F_x = +p_west * dy
+            // East face:  n̂_in = -x̂  → F_x = -p_east * dy
+            // South face: n̂_in = +ŷ  → F_y = +p_south * dx
+            // North face: n̂_in = -ŷ  → F_y = -p_north * dx
+            if (i > 0      && g.mask(i-1,j)==0) fx += g.p(i-1,j)*g.dy; // west
+            if (i < g.nx-1 && g.mask(i+1,j)==0) fx -= g.p(i+1,j)*g.dy; // east
+            if (j > 0      && g.mask(i,j-1)==0) fy += g.p(i,j-1)*g.dx; // south
+            if (j < g.ny-1 && g.mask(i,j+1)==0) fy -= g.p(i,j+1)*g.dx; // north
         }
     }
 

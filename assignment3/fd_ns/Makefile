@@ -23,7 +23,7 @@ $(BIN): $(SRCS) $(SRC)/mac_grid.hpp $(SRC)/pressure.hpp \
 
 TEST_BIN  := test_ns
 TEST_SRCS := $(SRC)/test_ns.cpp $(SRC)/mac_grid.cpp $(SRC)/pressure.cpp \
-             $(SRC)/bc.cpp $(SRC)/io.cpp
+             $(SRC)/ns_solver.cpp $(SRC)/bc.cpp $(SRC)/io.cpp
 
 $(TEST_BIN): $(TEST_SRCS) $(SRC)/mac_grid.hpp $(SRC)/pressure.hpp \
              $(SRC)/bc.hpp $(SRC)/io.hpp
