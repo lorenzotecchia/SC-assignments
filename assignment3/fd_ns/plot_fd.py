@@ -151,24 +151,33 @@ def cmd_animate(args):
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
-def main():
-    p = argparse.ArgumentParser(description="Visualise FD NS solver output")
-    p.add_argument("--outdir",   default="fd_ns/output", help="output directory")
-    p.add_argument("--nx",       type=int, default=440,  help="grid nx (default 440)")
-    p.add_argument("--ny",       type=int, default=82,   help="grid ny (default 82)")
-    p.add_argument("--save",     default="",             help="save to file instead of showing")
-    p.add_argument("--interval", type=int, default=100,  help="animation frame interval ms")
+def _add_common(sp):
+    """Add flags shared by all subcommands."""
+    sp.add_argument("--outdir", default="fd_ns/output", help="output directory")
+    sp.add_argument("--nx",     type=int, default=440,  help="grid nx (default 440)")
+    sp.add_argument("--ny",     type=int, default=82,   help="grid ny (default 82)")
+    sp.add_argument("--save",   default="",             help="save to file instead of showing")
 
+
+def main():
+    p   = argparse.ArgumentParser(description="Visualise FD NS solver output")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("forces",    help="Plot drag and lift time series")
+    sf = sub.add_parser("forces", help="Plot drag and lift time series")
+    _add_common(sf)
 
     sv = sub.add_parser("vorticity", help="Plot a single vorticity snapshot")
+    _add_common(sv)
     sv.add_argument("file", help="path to vorticity_NNNNNN.txt")
 
-    sub.add_parser("animate", help="Animate all vorticity snapshots")
+    sa = sub.add_parser("animate", help="Animate all vorticity snapshots")
+    _add_common(sa)
+    sa.add_argument("--interval", type=int, default=100,
+                    help="frame interval in ms (default 100)")
 
     args = p.parse_args()
+    if not hasattr(args, "interval"):
+        args.interval = 100   # default for non-animate subcommands
 
     if args.cmd == "forces":
         cmd_forces(args)
