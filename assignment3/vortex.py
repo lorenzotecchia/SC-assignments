@@ -55,6 +55,10 @@ parser.add_argument(
 parser.add_argument(
     "--outdir", type=str, default="karman_output", help="Output directory"
 )
+parser.add_argument(
+    "--supg", action="store_true", default=False,
+    help="Enable SUPG stabilisation for high-Re runs (default: off)"
+)
 args = parser.parse_args()
 
 # derived quantities
@@ -72,6 +76,7 @@ print(f"  dt       = {args.dt}")
 print(f"  tend     = {args.tend}")
 print(f"  order    = {args.order}")
 print(f"  maxh     = {args.maxh}")
+print(f"  SUPG     = {'enabled' if args.supg else 'disabled'}")
 print(f"  output   = {args.outdir}/")
 print(f"═══════════════════════════════════════════════\n")
 
@@ -158,6 +163,22 @@ conv += (Grad(u) * u) * v * dx
 
 print("       IMEX setup complete.")
 
+# SUPG stabilisation (Streamline-Upwind Petrov-Galerkin)
+# See docs/supg_theory.md for full derivation.
+# τ = [(2/dt)² + (2|u|/h)² + (4ν/h²)²]^{-1/2}  (Tezduyar & Osawa 2000)
+if args.supg:
+    h_mesh = specialcf.mesh_size
+    vel_norm = Norm(velocity)
+    tau_supg = 1.0 / sqrt(
+        (2.0 / dt) ** 2
+        + (2.0 * vel_norm / h_mesh) ** 2
+        + (4.0 * nu_visc / h_mesh**2) ** 2
+        + 1e-20
+    )
+    supg_lf = LinearForm(X)
+    supg_lf += tau_supg * InnerProduct(Grad(velocity) * velocity, Grad(v) * velocity) * dx
+    print("       SUPG stabilisation: enabled")
+
 # ─────────────────────────────────────────────
 # 5. Drag & Lift test functions
 # ─────────────────────────────────────────────
@@ -207,8 +228,11 @@ wall_start = walltime.time()
 
 with TaskManager():
     while t < args.tend - 0.5 * dt:
-        # IMEX step: residual = (A + C(u)) * u
+        # IMEX step: residual = (A + C(u)) * u  [+ SUPG if enabled]
         res = (a.mat + conv.mat) * gfu.vec
+        if args.supg:
+            supg_lf.Assemble()
+            res.data += supg_lf.vec
         gfu.vec.data -= dt * inv * res
 
         t += dt
