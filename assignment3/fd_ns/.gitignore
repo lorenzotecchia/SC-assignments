@@ -1,0 +1,7 @@
+# compiled binaries
+fd_karman
+test_ns
+
+# simulation output (large, regenerable)
+output/*.csv
+output/*.txt
