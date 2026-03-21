@@ -26,18 +26,20 @@ from pathlib import Path
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def load_vorticity(path, nx=440, ny=82):
-    """Load a vorticity txt file into a 2-D array (x, y, omega)."""
+def load_vorticity(path):
+    """Load a vorticity txt file into a 2-D array.
+
+    Grid shape is inferred from unique x/y values in the file, so the function
+    works regardless of which Re/grid run produced the snapshot.
+    """
     data = np.loadtxt(path)          # shape (N, 3): x  y  omega
-    # Sort by y then x to get a regular grid order
-    idx  = np.lexsort((data[:, 0], data[:, 1]))
+    idx  = np.lexsort((data[:, 0], data[:, 1]))   # sort: y outer, x inner
     data = data[idx]
-    # Inner cells: i=1..nx-2, j=1..ny-2  →  (nx-2)×(ny-2) points
-    ni, nj = nx - 2, ny - 2
-    omega = data[:, 2].reshape(nj, ni)   # shape (nj, ni) — row=y, col=x
-    x     = data[:ni, 0]                 # x values along bottom row
-    y     = data[::ni, 1]                # y values along left column
-    return x, y, omega
+    x_vals = np.unique(data[:, 0])
+    y_vals = np.unique(data[:, 1])
+    ni, nj = len(x_vals), len(y_vals)
+    omega  = data[:, 2].reshape(nj, ni)   # (nj, ni) — row=y, col=x
+    return x_vals, y_vals, omega
 
 
 def vorticity_clim(omega, pct=99):
@@ -83,7 +85,7 @@ def cmd_vorticity(args):
     if not path.exists():
         sys.exit(f"Not found: {path}")
 
-    x, y, omega = load_vorticity(path, nx=args.nx, ny=args.ny)
+    x, y, omega = load_vorticity(path)
     vmin, vmax  = vorticity_clim(omega)
 
     fig, ax = plt.subplots(figsize=(12, 3))
@@ -115,7 +117,19 @@ def cmd_animate(args):
         sys.exit(f"No vorticity_*.txt files found in {args.outdir}")
 
     print(f"Found {len(files)} snapshots.")
-    x, y, omega0 = load_vorticity(files[0], nx=args.nx, ny=args.ny)
+    x, y, omega0 = load_vorticity(files[0])
+    ref_shape = omega0.shape
+
+    # Keep only files whose grid matches the first snapshot (handles mixed-run dirs).
+    def _matches(f):
+        try:
+            _, _, om = load_vorticity(f)
+            return om.shape == ref_shape
+        except Exception:
+            return False
+
+    files = [f for f in files if _matches(f)]
+    print(f"Using {len(files)} snapshots with grid {ref_shape[1]}×{ref_shape[0]}.")
     vmin, vmax   = vorticity_clim(omega0)
 
     fig, ax = plt.subplots(figsize=(12, 3))
@@ -133,7 +147,7 @@ def cmd_animate(args):
     fig.tight_layout()
 
     def update(i):
-        _, _, omega = load_vorticity(files[i], nx=args.nx, ny=args.ny)
+        _, _, omega = load_vorticity(files[i])
         im.set_array(omega.ravel())
         title.set_text(files[i].name)
         return im, title
@@ -154,8 +168,6 @@ def cmd_animate(args):
 def _add_common(sp):
     """Add flags shared by all subcommands."""
     sp.add_argument("--outdir", default="fd_ns/output", help="output directory")
-    sp.add_argument("--nx",     type=int, default=440,  help="grid nx (default 440)")
-    sp.add_argument("--ny",     type=int, default=82,   help="grid ny (default 82)")
     sp.add_argument("--save",   default="",             help="save to file instead of showing")
 
 
