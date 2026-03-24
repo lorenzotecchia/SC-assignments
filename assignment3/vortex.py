@@ -56,8 +56,10 @@ parser.add_argument(
     "--outdir", type=str, default="karman_output", help="Output directory"
 )
 parser.add_argument(
-    "--supg", action="store_true", default=False,
-    help="Enable SUPG stabilisation for high-Re runs (default: off)"
+    "--supg",
+    action="store_true",
+    default=False,
+    help="Enable SUPG stabilisation for high-Re runs (default: off)",
 )
 args = parser.parse_args()
 
@@ -90,6 +92,19 @@ print("[1/6] Building geometry and mesh ...")
 # OCC geometry: channel rectangle minus cylinder
 shape = Rectangle(2.2, H).Circle(0.2, 0.2, 0.05).Reverse().Face()
 
+# Far wake — captures vortex propagation downstream
+wake_far = (
+    WorkPlane(Axes((0, 0, 0), n=Z, h=X)).MoveTo(0.1, 0.08).Rectangle(1.8, 0.25).Face()
+)
+wake_far_fluid = wake_far * shape
+
+# Near wake — vortex formation region
+wake_near = (
+    WorkPlane(Axes((0, 0, 0), n=Z, h=X)).MoveTo(0.1, 0.12).Rectangle(0.3, 0.17).Face()
+)
+wake_near_fluid = wake_near * shape
+
+
 # label boundaries
 shape.edges.name = "cyl"
 shape.edges.Min(X).name = "inlet"
@@ -97,7 +112,17 @@ shape.edges.Max(X).name = "outlet"
 shape.edges.Min(Y).name = "wall"
 shape.edges.Max(Y).name = "wall"
 
-mesh = Mesh(OCCGeometry(shape, dim=2).GenerateMesh(maxh=args.maxh)).Curve(3)
+for e in shape.edges:
+    if e.name == "cyl":
+        e.maxh = 0.005
+
+shape.faces.maxh = args.maxh  # coarse background
+wake_far_fluid.faces.maxh = args.maxh / 2  # finer mesh near cyl
+wake_near_fluid.faces.maxh = args.maxh / 2  # finer mesh at the start of the channel
+
+geo = OCCGeometry(Glue([shape, wake_far_fluid, wake_near_fluid]), dim=2)
+mesh = Mesh(geo.GenerateMesh(maxh=args.maxh)).Curve(3)
+
 print(f"       Mesh: {mesh.ne} elements, {mesh.nv} vertices")
 
 # ─────────────────────────────────────────────
@@ -159,7 +184,7 @@ dt = args.dt
 mstar = BilinearForm(X)
 mstar += InnerProduct(u, v) * dx + dt * stokes
 mstar.Assemble()
-inv = mstar.mat.Inverse(X.FreeDofs())
+inv = mstar.mat.Inverse(X.FreeDofs(), inverse="pardiso")
 
 # convection form (nonassemble — applied as operator)
 conv = BilinearForm(X, nonassemble=True)
@@ -180,7 +205,9 @@ if args.supg:
         + 1e-20
     )
     supg_lf = LinearForm(X)
-    supg_lf += tau_supg * InnerProduct(Grad(velocity) * velocity, Grad(v) * velocity) * dx
+    supg_lf += (
+        tau_supg * InnerProduct(Grad(velocity) * velocity, Grad(v) * velocity) * dx
+    )
     print("       SUPG stabilisation: enabled")
 
 # ─────────────────────────────────────────────
@@ -230,6 +257,7 @@ drag_vals = []
 lift_vals = []
 wall_start = walltime.time()
 
+SetNumThreads(os.cpu_count())
 with TaskManager():
     while t < args.tend - 0.5 * dt:
         # IMEX step: residual = (A + C(u)) * u  [+ SUPG if enabled]
