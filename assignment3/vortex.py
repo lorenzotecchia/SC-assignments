@@ -184,7 +184,7 @@ dt = args.dt
 mstar = BilinearForm(X)
 mstar += InnerProduct(u, v) * dx + dt * stokes
 mstar.Assemble()
-inv = mstar.mat.Inverse(X.FreeDofs(), inverse="pardiso")
+inv = mstar.mat.Inverse(X.FreeDofs())
 
 # convection form (nonassemble — applied as operator)
 conv = BilinearForm(X, nonassemble=True)
