@@ -4,6 +4,17 @@ using Random
 using Colors
 using Images
 using Plots
+using IterativeSolvers
+using Preconditioners 
+using IncompleteLU
+using Statistics
+
+#TODO:  1.  implementation of simulated annealing 
+#           (can be done with faster frequency-dx values to explore the space,
+#           then we use true frequency and appropriate dx to look for true solution)
+#       2.  I tried to make the matrix comp faster but I didn't succeed.
+#           Anyway, there should be a faster method? or a way to split the matrix idk 
+
 
 # Suppress Qt warnings in WSL
 ENV["QT_LOGGING_RULES"] = "*=false"
@@ -13,7 +24,7 @@ gr()  # Use GR backend explicitly for WSL compatibility
 
 
 # grid resolution (meter per pixel)
-dx = 0.05
+dx = 0.007
 
 # material properties
 air  = 1.0 + 0im
@@ -28,7 +39,7 @@ nx = Int(round(x_meter / dx))
 ny = Int(round(y_meter / dx))
 
 # frequency (GHz)
-f = 0.8e9
+f = 2.4e9
 
 # speed of light
 c = 3e8
@@ -42,6 +53,8 @@ A = 1e4
 # width
 sigma = 0.2
 
+# measuraments points
+measuraments_points = [(1, 5,  "Living Room"),(2, 1, "Kitchen"), (9,1, "Bathroom"), (9,7, "Bedroom")]
 
 function create_floorplan()
     #= creates the floor plan as the matrix floor, by converting meter into pixels using the predefined 
@@ -50,7 +63,6 @@ function create_floorplan()
     - wall = 0.0 =#
 
     floor = ones(Int, nx, ny)
-
     m2p_x(x) = clamp(Int(round(x / dx)) + 1, 1, nx)
     m2p_y(y) = clamp(Int(round(y / dx)) + 1, 1, ny)
 
@@ -175,10 +187,68 @@ function solve_Helmholtz_eq(rx, ry)
 
     # compute u = M^-1 * f and reshape to 2D
     u = reshape(M \ f, nx, ny)
+    #P = ilu(M, τ=0.01)
+    #u_vec, _ = gmres(M, f; Pl=P, restart=50, maxiter=500, tol=1e-6)
 
     return u, floor
 end
 
+function diagnose(u, floor)
+    # to see if the signal is zero far from the router, ro just very low
+    intensity = abs.(u).^2
+
+    air_mask = floor .== 1
+    i_air = intensity[air_mask]
+
+    println("=== Intensity diagnostics (air only) ===")
+    println("  max    : ", maximum(i_air))
+    println("  min    : ", minimum(i_air))
+    println("  median : ", median(i_air))
+    println("  mean   : ", mean(i_air))
+    println("  % below 1e-6 of max: ", 
+        100 * mean(i_air .< 1e-6 * maximum(i_air)), "%")
+
+    # also check the raw field (not intensity)
+    println("\n=== Raw field u ===")
+    println("  max |u| : ", maximum(abs.(u)))
+    println("  min |u| : ", minimum(abs.(u[air_mask])))
+end
+
+function signal_strength(rx, ry)
+    #=  Compute the total signal for router position (rx, ry). =#
+    u, floor = solve_Helmholtz_eq(rx, ry)
+
+    sum = 0.0
+    for (mx, my, name) in measuraments_points
+        signal = measurement(u, mx, my)
+        println("Signal in ", name, ": ", signal) 
+        sum += signal
+    end
+    println("Total signal: ", sum) 
+    return u, floor
+end
+
+function measurement(u, mx, my)
+    #= Performs one measurament in a 5cm radius region 
+    around the (mx, my) point. =#
+    m2x(x) = Int(round(x/dx)) + 1
+    m2y(y) = Int(round(y/dx)) + 1
+
+    mx = m2x(mx)
+    my = m2y(my)
+
+    radius = m2x(0.05)
+
+    total = 0.
+    for i in 0:radius
+        for j in 0:radius
+            if (i+j)^2<radius
+                total += abs(u[mx+i, my+j])^2
+            end
+        end
+    end
+    return total
+end
 
 function show_heatmap(u, plan)
 
@@ -211,10 +281,10 @@ function main()
     rx = 4
     ry = 5
 
-    u, floor = solve_Helmholtz_eq(rx, ry)
-
+    u, floor = signal_strength(rx, ry)
+    
+    # diagnose(u,floor)
     show_heatmap(u, floor)
-
 end
 
 main()
