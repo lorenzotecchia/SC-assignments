@@ -4,17 +4,10 @@ using Random
 using Colors
 using Images
 using Plots
-using IterativeSolvers
-using Preconditioners 
-using IncompleteLU
+# using IterativeSolvers
+# using Preconditioners 
+# using IncompleteLU
 using Statistics
-
-#TODO:  1.  implementation of simulated annealing 
-#           (can be done with faster frequency-dx values to explore the space,
-#           then we use true frequency and appropriate dx to look for true solution)
-#       2.  I tried to make the matrix comp faster but I didn't succeed.
-#           Anyway, there should be a faster method? or a way to split the matrix idk 
-
 
 # Suppress Qt warnings in WSL
 ENV["QT_LOGGING_RULES"] = "*=false"
@@ -22,9 +15,18 @@ ENV["QT_QPA_PLATFORM"] = "xcb"
 
 gr()  # Use GR backend explicitly for WSL compatibility
 
+# speed of light
+c = 3e8
+
+# frequency (GHz)
+f = 1.2e9
+
+# wavelength
+lambda = c / f
 
 # grid resolution (meter per pixel)
-dx = 0.007
+#dx = 0.007
+dx = lambda / 12
 
 # material properties
 air  = 1.0 + 0im
@@ -38,12 +40,6 @@ y_meter = 8.0
 nx = Int(round(x_meter / dx))
 ny = Int(round(y_meter / dx))
 
-# frequency (GHz)
-f = 2.4e9
-
-# speed of light
-c = 3e8
-
 # wavenumber
 k = 2*pi * f / c
 
@@ -53,8 +49,12 @@ A = 1e4
 # width
 sigma = 0.2
 
-# measuraments points
-measuraments_points = [(1, 5,  "Living Room"),(2, 1, "Kitchen"), (9,1, "Bathroom"), (9,7, "Bedroom")]
+# measurement points
+measurement_points = [(1., 5.,  "Living Room"),(2., 1., "Kitchen"), (9., 1., "Bathroom"), (9., 7., "Bedroom")]
+
+# from meter to pixel
+m2x(x) = Int(round(x/dx)) + 1
+m2y(y) = Int(round(y/dx)) + 1
 
 function create_floorplan()
     #= creates the floor plan as the matrix floor, by converting meter into pixels using the predefined 
@@ -121,12 +121,36 @@ function build_helmholtz_matrix(plan)
 
     # discretization: finite difference
     # interior points
-    for x in 2:nx-1, y in 2:ny-1
+    for x in 1:nx, y in 1:ny
         # material type (air = 1, wall = 0)
         n = plan[x,y] == 1 ? air : wall
 
         # k^2 of helmholtz equation (n^2 is material properties)
         k2 = (k * n)^2
+
+        if x == 1
+            add(x, y, x, y, -1/dx + 1im*k)
+            add(x, y, x+1, y, 1/dx)
+            continue
+        end
+
+        if x == nx
+            add(x, y, x, y, -1/dx - 1im*k)
+            add(x, y, x-1, y, 1/dx)
+            continue
+        end
+
+        if y == 1
+            add(x, y, x, y, -1/dx + 1im*k)
+            add(x, y, x, y+1, 1/dx)
+            continue
+        end
+        
+        if y == ny
+            add(x, y, x, y, -1/dx - 1im*k)
+            add(x, y, x, y-1, 1/dx)
+            continue
+        end
 
         # finite difference (5-point stencil)
         add(x,y,x,y, -4/dx^2 + k2)
@@ -134,16 +158,6 @@ function build_helmholtz_matrix(plan)
         add(x,y,x-1,y, 1/dx^2)
         add(x,y,x,y+1, 1/dx^2)
         add(x,y,x,y-1, 1/dx^2)
-    end
-
-    # Dirichlet boundary condition (u=0)
-    for x in 1:nx, y in 1:ny
-        if x == 1 || y == 1 || x == nx || y == ny
-            idv = idx[x,y]
-            push!(I, idv)
-            push!(J, idv)
-            push!(V, 1.0 + 0im)
-        end
     end
 
     return sparse(I, J, V, N, N)
@@ -154,9 +168,6 @@ function gaussian_source(rx, ry)
     #= returns Wifi router source term f as Gaussian pulse. =#
 
     f = zeros(ComplexF64, nx, ny)
-
-    m2x(x) = Int(round(x/dx)) + 1
-    m2y(y) = Int(round(y/dx)) + 1
 
     # router location
     router_x = m2x(rx)
@@ -219,21 +230,18 @@ function signal_strength(rx, ry)
     u, floor = solve_Helmholtz_eq(rx, ry)
 
     sum = 0.0
-    for (mx, my, name) in measuraments_points
+    for (mx, my, name) in measurement_points
         signal = measurement(u, mx, my)
         println("Signal in ", name, ": ", signal) 
         sum += signal
     end
     println("Total signal: ", sum) 
-    return u, floor
+    return sum, u, floor
 end
 
 function measurement(u, mx, my)
-    #= Performs one measurament in a 5cm radius region 
+    #= Performs one measurement in a 5cm radius region 
     around the (mx, my) point. =#
-    m2x(x) = Int(round(x/dx)) + 1
-    m2y(y) = Int(round(y/dx)) + 1
-
     mx = m2x(mx)
     my = m2y(my)
 
@@ -250,9 +258,79 @@ function measurement(u, mx, my)
     return total
 end
 
+function check_position(rx, ry, floor)
+    ix = m2x(rx)
+    iy = m2y(ry)
+
+
+    if ix <= 1 || iy <= 1
+        return false 
+    end
+        if ix >= nx || iy >= ny
+        return false 
+    end
+    if floor[m2x(rx), m2y(ry)] == 0.0
+        return false
+    end
+
+    for (mx, my, _) in measurement_points
+        if sqrt((mx-rx)^2 + (my-ry)^2) < 0.5    # radius is 0.5m
+            return false
+        end
+    end
+    return true
+end
+
+function get_neighbor(rx, ry, step_size, floor, tryals = 0)
+    if tryals > 100
+        return false, false
+    end
+    
+    x_new = rx + rand()*2*step_size - step_size
+    y_new = ry + rand()*2*step_size - step_size
+
+    if check_position(x_new, y_new, floor)
+        return x_new, y_new    
+    else 
+        return get_neighbor(x_new, y_new, step_size, floor, tryals + 1)
+    end
+end
+
+function simulated_annealing(rx, ry, n_iterations, step_size, temp)
+    best = [rx, ry]
+    best_eval, best_u, floor = signal_strength(rx, ry)
+    scores = [best_eval]
+
+    current_eval = best_eval
+    current = best
+    for i in 1:n_iterations
+        t = temp / (i) 
+        candidate = get_neighbor(current[1], current[2], step_size, floor, 0)
+        if candidate == (false, false)
+            println("Annealing stopped since could not find optimal path.")
+            return best, best_eval, scores
+        end
+        candidate_eval, candidate_u, _ = signal_strength(candidate[1], candidate[2])
+        
+        if candidate_eval > best_eval || rand() < exp((candidate_eval - current_eval) / t)
+            current, current_eval = candidate, candidate_eval
+            if candidate_eval > best_eval
+                best, best_eval, best_u = candidate, candidate_eval, candidate_u
+                push!(scores, best_eval)
+            end
+        end
+
+        if i % 100 == 0
+            println("iteration ", i, ", temperature: ", t:.3f, ", best evaluation: ", best_eval:.5f)
+        end
+    end
+    return best, best_eval, best_u, scores, floor 
+end
+
 function show_heatmap(u, plan)
 
-    intensity = abs.(u).^2
+    # intensity = abs.(u).^2
+    intensity = real.(u).^2
 
     # log scaling 
     intensity = log.(intensity .+ 1e-12)
@@ -266,25 +344,35 @@ function show_heatmap(u, plan)
     hmap = heatmap(
         intensity',
         color = :turbo,
+    #    clim = (minimum(intensity), -20), 
         aspect_ratio = :equal,
         legend = :right,
         title = "WiFi Signal Strength (log intensity)",
         xlabel = "x",
         ylabel = "y"
     )
+
+    for (x, y, _) in measurement_points
+        scatter!([m2x(x)], [m2y(y)], markershape=:circle, markersize=6, color=:white, label="")
+    end
     savefig(hmap, "output/heatmap.png")
 
 end
 
 function main()
+    println("number of points per wavelength: ", round(lambda/dx))
     # router position
     rx = 4
     ry = 5
 
-    u, floor = signal_strength(rx, ry)
-    
+    n_iterations = 1
+    step_size = 0.1 # in meters
+    start_temperature = 1 
+
+    best, best_eval, best_u, scores, floor = simulated_annealing(rx, ry, n_iterations, step_size, start_temperature)
+     
     # diagnose(u,floor)
-    show_heatmap(u, floor)
+    show_heatmap(best_u, floor)
 end
 
 main()
