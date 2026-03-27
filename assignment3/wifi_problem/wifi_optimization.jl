@@ -60,3 +60,53 @@ function pixels_on_line(x0, x1, y0, y1)
     return result
 end
 
+
+function shadowing_wave(floor, router)
+    """
+    Computes 2D matrix S of signal strength at each pixel using shadowing based on complex refractive indices.
+    Based on:
+    - phase shift and attenuation
+    - distance from router
+    """
+
+    nx, ny = size(floor)
+
+    # refractive index
+    index_air = 1.0 + 0im
+    index_wall = 2.5 + 0.5im
+
+    # refractive index field: matrix with complex numbers
+    index_field = Array{ComplexF64}(undef, nx, ny)
+    for x in 1:nx, y in 1:ny
+        index_field[x,y] = (floor[x,y] == 1) ? index_air : index_wall
+    end
+
+    # store signal strength per pixel
+    S = zeros(Float64, nx, ny)
+
+    # compute signal strength from each pixel
+    for y in 1:ny, x in 1:nx
+        # ray propagation (straight line)
+        pixels = pixels_on_line(router[1], router[2], x, y)
+
+        # wave variables
+        phase_shift = 0.0       # wave oscillation
+        attenuation = 1.0       # singal strength multiplier
+
+        for (px, py) in pixels
+            # material property of pixel
+            property = index_field[px, py]
+
+            # phase shift
+            phase_shift += real(property)
+
+            # attenuation (exponential decay)
+            attenuation *= exp(-imag(property))
+        end
+        
+        # combine effects to get signal strength
+        S[x,y] = attenuation * cos(phase_shift)
+    end
+
+    return S
+end
