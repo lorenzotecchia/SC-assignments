@@ -221,20 +221,24 @@ function measurement(u, nx, ny, dx, mx, my)
     """
     Measures signal intensity in a 5cm radius region around point (mx, my).
     """
-    mx = m2x(mx, dx)
-    my = m2y(my, dx)
+    ix = m2x(mx, dx)
+    iy = m2y(my, dx)
 
-    radius = m2x(0.05, dx)
+    radius = max(1, m2x(0.05, dx))
 
     total = 0.
-    for i in 0:radius
-        for j in 0:radius
-            if (i+j)^2<radius
-                total += abs(u[mx+i, my+j])^2
+    for i in -radius:radius
+        for j in -radius:radius
+            if i^2+j^2<radius^2
+                x = ix + i 
+                y = iy + j 
+                if 1 <= x <= nx && 1 <= y <= ny 
+                    total += abs(u[x,y])^2
+                end
             end
         end
     end
-    return total
+    return total * dx^2
 end
 
 function check_position(rx, ry, nx, ny, dx, floor, measurement_points)
