@@ -57,10 +57,12 @@ m2x(x) = Int(round(x/dx)) + 1
 m2y(y) = Int(round(y/dx)) + 1
 
 function create_floorplan()
-    #= creates the floor plan as the matrix floor, by converting meter into pixels using the predefined 
+    """
+    creates the floor plan as the matrix floor, by converting meter into pixels using the predefined 
     grid resolution dx.
     - air = 1.0
-    - wall = 0.0 =#
+    - wall = 0.0
+    """ 
 
     floor = ones(Int, nx, ny)
     m2p_x(x) = clamp(Int(round(x / dx)) + 1, 1, nx)
@@ -95,11 +97,12 @@ end
 
 
 function build_helmholtz_matrix(plan)
-    #= returns sparse Helmholtz matrix M for 2D domain 
+    """
+    returns sparse Helmholtz matrix M for 2D domain 
         - Mu = f 
         - discretization: central finite difference scheme (5-point stencil)
         - uses Dirichlet boundary conditions (u=0)
-    =#
+    """
 
     # total number of grid points
     N = nx * ny
@@ -165,7 +168,7 @@ end
 
 
 function gaussian_source(rx, ry)
-    #= returns Wifi router source term f as Gaussian pulse. =#
+    """returns Wifi router source term f as Gaussian pulse."""
 
     f = zeros(ComplexF64, nx, ny)
 
@@ -190,7 +193,7 @@ end
 
 
 function solve_Helmholtz_eq(rx, ry)
-    #= solves the Helmholtz equation and returns the wave field u. =#
+    """solves the Helmholtz equation and returns the wave field u."""
 
     floor = create_floorplan()
     M = build_helmholtz_matrix(floor)
@@ -240,8 +243,7 @@ function signal_strength(rx, ry)
 end
 
 function measurement(u, mx, my)
-    #= Performs one measurement in a 5cm radius region 
-    around the (mx, my) point. =#
+    """ Performs one measurement in a 5cm radius region around the (mx, my) point."""
     mx = m2x(mx)
     my = m2y(my)
 
@@ -312,7 +314,7 @@ function simulated_annealing(rx, ry, n_iterations, step_size, temp)
         end
         candidate_eval, candidate_u, _ = signal_strength(candidate[1], candidate[2])
         
-        if candidate_eval > best_eval || rand() < exp((candidate_eval - current_eval) / t)
+        if candidate_eval > current_eval || rand() < exp((candidate_eval - current_eval) / t)
             current, current_eval = candidate, candidate_eval
             if candidate_eval > best_eval
                 best, best_eval, best_u = candidate, candidate_eval, candidate_u
@@ -355,22 +357,28 @@ function show_heatmap(u, plan)
     for (x, y, _) in measurement_points
         scatter!([m2x(x)], [m2y(y)], markershape=:circle, markersize=6, color=:white, label="")
     end
-    savefig(hmap, "output/heatmap.png")
+    #savefig(hmap, "output/heatmap.png")
+    hmap
+    
 
 end
 
 function main()
     println("number of points per wavelength: ", round(lambda/dx))
     # router position
-    rx = 4
-    ry = 5
+    rx = 7
+    ry = 6
 
-    n_iterations = 1
+    n_iterations = 10
     step_size = 0.1 # in meters
     start_temperature = 1 
 
     best, best_eval, best_u, scores, floor = simulated_annealing(rx, ry, n_iterations, step_size, start_temperature)
      
+    println("\n=== RESULT ===")
+    println("best router position: ", best)
+    println("best total signal strength: ", best_eval)
+
     # diagnose(u,floor)
     show_heatmap(best_u, floor)
 end

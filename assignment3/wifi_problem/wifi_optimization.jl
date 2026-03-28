@@ -25,7 +25,7 @@ function pathloss(router, dim_x, dim_y, scaling)
     # fix singularity
     Dist[router...] = Dist[router[1]-1, router[2]-1]
 
-    # compute path loss (free-space propagation law)
+    # compute path loss
     sigal_loss = similar(Dist, Float64)
     sigal_loss = 20 .* log10.(Dist .^ -2)
     return sigal_loss
