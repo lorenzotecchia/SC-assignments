@@ -47,7 +47,7 @@ measurement_points = [
     (9.0, 7.0, "Bedroom")
 ]
 
-function coarse_candidate_evaluation(inside, points, spacing, nx, ny, dx, floor, air, wall, k, measurement_points)
+function coarse_candidate_evaluation(inside, points, spacing, M, nx, ny, dx, floor, measurement_points)
     """
     Evaluates signal strength on a coarse grid of candidate positions.
     
@@ -75,8 +75,7 @@ function coarse_candidate_evaluation(inside, points, spacing, nx, ny, dx, floor,
         iy = Int(round(y / spacing)) + 1
         
         if check_position(x, y, nx, ny, dx, floor, measurement_points)
-            objective, _ = signal_strength(x, y, nx, ny, dx, floor, air, wall, k, measurement_points)
-            scores[ix, iy] = objective
+            scores[ix, iy], _ = signal_strength(M, x, y, nx, ny, dx, measurement_points)
         end
 
         # print percentage progress every 1% or on last
@@ -120,9 +119,11 @@ end
 function main()
     println("Points per wavelength: ", round(lambda/dx))
     
-    # Create floor plan
+    # Create floor plan and helmholtz matrix
     floor = create_floorplan(nx, ny, dx)
-    
+    M = build_helmholtz_matrix(nx, ny, dx, floor, air, wall, k)
+    F = lu(M)
+
     # Define search region (polygon vertices)
     x_poly = [2., 2., 1., 1., 9., 9., 7.5, 7.5, 2.]
     y_poly = [0., 1.5, 1.5, 6.5, 6.5, 3., 3., 0., 0.]
@@ -142,8 +143,8 @@ function main()
     
     # Evaluate signal strength on coarse grid (iterate only over inside points)
     # scores = fill(NaN, Int(maximum(getindex.(points,1)) / spacing) + 1, Int(maximum(getindex.(points,2)) / spacing) + 1)
+    scores = coarse_candidate_evaluation(inside, points, spacing, F, nx, ny, dx, floor, measurement_points)
 
-    scores = coarse_candidate_evaluation(inside, points, spacing, nx, ny, dx, floor, air, wall, k, measurement_points)
     println()    
     
     # Save results to CSV

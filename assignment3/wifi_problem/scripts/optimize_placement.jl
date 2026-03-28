@@ -9,10 +9,11 @@ push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 include(joinpath(@__DIR__, "..", "src", "helmholtz.jl"))
 
 using StaticArrays
+using Printf
 
 # Physical constants
 c = 3e8  # speed of light
-f = 1.2e9  # frequency (Hz)
+f = 2.4e9  # frequency (Hz)
 lambda = c / f  # wavelength
 
 # Grid resolution
@@ -55,73 +56,111 @@ function get_neighbor(rx, ry, nx, ny, dx, floor, measurement_points, step_size, 
     y_new = ry + rand() * 2 * step_size - step_size
 
     if check_position(x_new, y_new, nx, ny, dx, floor, measurement_points)
-        return x_new, y_new    
+        return [x_new, y_new]   
     else 
         return get_neighbor(rx, ry, nx, ny, dx, floor, measurement_points, step_size, trials + 1)
     end
 end
 
-function simulated_annealing(rx, ry, nx, ny, dx, floor, air, wall, k, measurement_points, n_iterations, step_size, temp)
+function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n_iterations, step_size, temp; output_path = false)
     """
     Performs simulated annealing to optimize router placement.
-    
+
     Args:
     - rx, ry: initial position
     - n_iterations: number of iterations
     - step_size: maximum step size (meters)
     - temp: initial temperature
-    
-    Returns: (best_position, best_score, best_wavefield, score_history)
+
+    Returns: (best_position, best_score, best_wavefield, score_history) or with path when output_path=true
     """
     best = [rx, ry]
-    best_eval, best_u = signal_strength(rx, ry, nx, ny, dx, floor, air, wall, k, measurement_points)
+
+    # initial solve
+    best_eval, best_u = signal_strength(M, rx, ry, nx, ny, dx, measurement_points)
+
     scores = [best_eval]
+
+    # path storage (vector of [x,y,score] vectors) when requested
+    path = Vector{Vector{Float64}}()
+    if output_path
+        push!(path, [best[1], best[2], best_eval])
+    end
 
     current_eval = best_eval
     current = best
-    
+
     for i in 1:n_iterations
         t = temp / i
-        
+
         candidate = get_neighbor(current[1], current[2], nx, ny, dx, floor, measurement_points, step_size, 0)
         if candidate == (false, false)
             println("Annealing stopped: could not find valid neighbor position.")
             return best, best_eval, best_u, scores
         end
-        
-        candidate_eval, candidate_u = signal_strength(candidate[1], candidate[2], nx, ny, dx, floor, air, wall, k, measurement_points)
-        
+
+        # evaluate candidate by solving with prebuilt M
+        candidate_eval, candidate_u = signal_strength(M, rx, ry, nx, ny, dx, measurement_points)
+
         # Accept if better, or with probability based on temperature
         if candidate_eval > best_eval || rand() < exp((candidate_eval - current_eval) / t)
             current, current_eval = candidate, candidate_eval
+            if output_path
+                push!(path, [current[1], current[2], current_eval])
+            end
             if candidate_eval > best_eval
                 best, best_eval, best_u = candidate, candidate_eval, candidate_u
                 push!(scores, best_eval)
             end
         end
 
-        if i % 100 == 0
-            println("Iteration $i, Temperature: $(round(t, digits=3)), Best: $(round(best_eval, digits=5))")
+        # print percentage progress every 1% or on last
+        pct = Int(round(100 * i / n_iterations))
+        if i == n_iterations || pct % 1 == 0
+            @printf("\rProgress: %3d%% (%d/%d)", pct, i,n_iterations)
+            flush(stdout)
         end
+
     end
-    
-    return best, best_eval, best_u, scores 
+
+    if output_path
+        return best, best_eval, best_u, scores, path
+    end
+    return best, best_eval, best_u, scores
 end
 
 using DelimitedFiles
 
-function run_optimization_from_candidate(rx, ry, idx, floor; n_iterations=1000, step_size=0.5, start_temperature=1.0)
+function run_optimization_from_candidate(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.5, start_temperature=1.0, output_path=false)
     println("\nStarting optimization from candidate #$idx at ($rx, $ry)")
-    best, best_eval, best_u, scores = simulated_annealing(
-        rx, ry, nx, ny, dx, floor, air, wall, k, measurement_points,
-        n_iterations, step_size, start_temperature
-    )
+    if output_path
+        best, best_eval, best_u, scores, path = simulated_annealing(
+            M, rx, ry, nx, ny, dx, floor, measurement_points,
+            n_iterations, step_size, start_temperature; output_path=true
+        )
+    else
+        best, best_eval, best_u, scores = simulated_annealing(
+            M, rx, ry, nx, ny, dx, floor, measurement_points,
+            n_iterations, step_size, start_temperature; output_path=false
+        )
+    end
 
     println("Candidate #$idx best: ($(round(best[1], digits=3)), $(round(best[2], digits=3))) score=$(best_eval)")
 
     # Save best field intensity (abs(u).^2) to CSV for visualization
     intensity = abs.(best_u).^2
     writedlm("output/best_field_candidate_$(idx).csv", intensity, ',')
+
+    # If requested, save the path taken (x,y,score) per row
+    if output_path && length(path) > 0
+        path_mat = transpose(hcat(path...))
+        open("output/optimization_path_candidate_$(idx).csv", "w") do io
+            println(io, "x,y,score")
+            for r in 1:size(path_mat,1)
+                println(io, string(path_mat[r,1], ",", path_mat[r,2], ",", path_mat[r,3]))
+            end
+        end
+    end
 
     return (idx=idx, init=(rx,ry), best=best, score=best_eval)
 end
@@ -134,9 +173,12 @@ function main()
 
     # Create floor plan
     floor = create_floorplan(nx, ny, dx)
+    M = build_helmholtz_matrix(nx, ny, dx, floor, air, wall, k)
+    F = lu(M)
 
     # Read top candidates if available
     candidates = []
+    
     topfile = "output/top_candidates.csv"
     if isfile(topfile)
         println("Reading candidates from $topfile")
@@ -156,18 +198,18 @@ function main()
         println("No top_candidates.csv found, using single initial guess.")
         push!(candidates, (4.0, 5.0))
     end
-
+    
     # parameters
-    n_iterations = 1000
-    step_size = 0.5
-    start_temperature = 1.0
+    n_iterations = 10
+    step_size = 0.15
+    start_temperature = 0.1
 
+    
     results = []
     for (i, (rx, ry)) in enumerate(candidates)
-        r = run_optimization_from_candidate(rx, ry, i, floor; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature)
+        r = run_optimization_from_candidate(rx, ry, F, floor, i; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature, output_path=true)
         push!(results, r)
     end
-
     # Save summary CSV
     open("output/optimization_results.csv", "w") do io
         println(io, "idx,init_x,init_y,best_x,best_y,score")
@@ -175,6 +217,10 @@ function main()
             println(io, string(res.idx, ",", res.init[1], ",", res.init[2], ",", res.best[1], ",", res.best[2], ",", res.score))
         end
     end
+    
+
+    # Path files are saved per-candidate inside run_optimization_from_candidate when requested
+    # (output_path flag).
 
     # Print overall best
     best_overall = findmax([res.score for res in results])

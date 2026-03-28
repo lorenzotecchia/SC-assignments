@@ -158,13 +158,12 @@ function gaussian_source(rx, ry, nx, ny, dx; sigma = 0.2, A = 0.2)
 end
 
 
-function solve_Helmholtz_eq(rx, ry, nx, ny, dx, floor, air, wall, k)
+function solve_Helmholtz_eq(M, rx, ry, nx, ny, dx)
     """
     Solves the Helmholtz equation for router at (rx, ry).
     
     Returns wave field u as a 2D array.
     """
-    M = build_helmholtz_matrix(nx, ny, dx, floor, air, wall, k)
     f = gaussian_source(rx, ry, nx, ny, dx)
 
     # compute u = M^-1 * f and reshape to 2D
@@ -195,13 +194,13 @@ function diagnose(u, floor)
     println("  min |u| : ", minimum(abs.(u[air_mask])))
 end
 
-function signal_strength(rx, ry, nx, ny, dx, floor, air, wall, k, measurement_points; verbose=false)
+function signal_strength(M, rx, ry, nx, ny, dx, measurement_points; verbose=false)
     """
     Computes total signal strength at all measurement points for router at (rx, ry).
     
     Returns: (total_signal, wave_field)
     """
-    u = solve_Helmholtz_eq(rx, ry, nx, ny, dx, floor, air, wall, k)
+    u = solve_Helmholtz_eq(M, rx, ry, nx, ny, dx)
 
     sum = 0.0
     for (mx, my, name) in measurement_points
