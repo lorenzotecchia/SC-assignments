@@ -1,6 +1,7 @@
 assignment*/output/*.txt
 assignment*/output/plots/*.eps
 assignment*/output/plots/*.png
+third-report/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

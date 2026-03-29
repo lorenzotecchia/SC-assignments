@@ -1,3 +1,7 @@
 fig/*
 .venv
 karman_output/
+output/
+wifi_problem/output/
+third-report/
+.DS_Store

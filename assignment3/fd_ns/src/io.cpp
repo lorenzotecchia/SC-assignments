@@ -1,11 +1,13 @@
 #include "io.hpp"
 #include <cstdio>
 #include <cmath>
+#include <fstream>
 
 void write_force_csv(const std::string &path, double t, double cd, double cl) {
+    bool new_file = !std::ifstream(path).good();
     FILE *f = std::fopen(path.c_str(), "a");
     if (!f) return;
-    if (t == 0.0) std::fprintf(f, "time,cd,cl\n");
+    if (new_file) std::fprintf(f, "time,cd,cl\n");
     std::fprintf(f, "%.6f,%.8f,%.8f\n", t, cd, cl);
     std::fclose(f);
 }

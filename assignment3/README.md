@@ -1,46 +1,72 @@
 # Assignment 3
 
-Kármán vortex street simulations for the 2026 Scientific Computing course.
-Three independent solvers — a GPU-accelerated Lattice Boltzmann Method, a finite-element Navier-Stokes solver, and a finite-difference Navier-Stokes solver — all targeting the same Schäfer-Turek benchmark flow.
+Three independent Navier-Stokes solvers for the Schäfer-Turek benchmark (Kármán vortex street, Re 100–3000) and a WiFi signal optimisation problem using the 2D Helmholtz equation.
+
+<video src="karman.mp4" autoplay loop muted width="700"></video>
+
+> Vorticity field from the LBM solver at Re = 400. Generated with `uv run python taichi_lbm.py 0`.
 
 ---
 
-## How to run
+## Solvers at a glance
 
-Install dependencies with [uv](https://github.com/astral-sh/uv):
+| Solver | Method | Language | Re range | Output |
+|---|---|---|---|---|
+| `taichi_lbm.py` | D2Q9 LBM | Python / Taichi (GPU) | up to ~3000 | interactive GUI |
+| `vortex.py` | Taylor-Hood FEM | Python / NGSolve | up to ~400 | VTK + CSV + plots |
+| `fd_ns/` | MAC staggered FD | C++20 / OpenMP | up to ~3000 | CSV + point-cloud txt |
+| `wifi_problem/` | Helmholtz FD | Julia | — | CSV + PNG heatmap |
+
+---
+
+## Quick start
+
+Install Python dependencies:
 
 ```bash
 uv sync
 ```
 
-### LBM solver (Taichi, interactive GUI)
+The FD solver also needs Eigen3 and a C++20 compiler:
 
 ```bash
-# Kármán Vortex Street — default Re=400
+brew install eigen          # macOS
+sudo apt install libeigen3-dev g++   # Debian/Ubuntu
+```
+
+---
+
+## How to run
+
+### LBM solver — GPU-accelerated, interactive
+
+```bash
+# Kármán vortex street — default Re = 400
 uv run python taichi_lbm.py 0
 
-# Kármán Vortex Street — custom Reynolds number
+# Custom Reynolds number
 uv run python taichi_lbm.py 0 200
 
-# Lid-driven Cavity Flow — Re=1000
+# Lid-driven cavity — Re = 1000
 uv run python taichi_lbm.py 1
 ```
 
-Press `ESC` or close the window to exit.
+Press `ESC` or close the window to exit. Taichi auto-selects CUDA / Metal / Vulkan.
 
-### NGSolve FEM solver (headless, batch output)
+---
+
+### FEM solver — NGSolve, headless
 
 ```bash
-# default Re=100, dt=0.0005, tend=8.0
+# Default: Re = 100, dt = 0.0005, tend = 8.0
 uv run python vortex.py
 
-# custom parameters
+# Custom parameters
 uv run python vortex.py --Re 200 --dt 0.0005 --tend 8.0 --order 2 --maxh 0.07
 uv run python vortex.py --help   # full option list
 ```
 
-Output is written to `karman_output/` (VTK time series, drag/lift CSV, and plots).
-Open the result in ParaView:
+Output written to `karman_output/`. Open in ParaView:
 
 ```bash
 paraview karman_output/karman.pvd
@@ -48,58 +74,31 @@ paraview karman_output/karman.pvd
 
 ---
 
-## Repository structure
-
-```
-.
-├── taichi_lbm.py       # D2Q9 LBM solver — GPU via Taichi, interactive visualisation
-├── vortex.py           # Taylor-Hood FEM solver — NGSolve, headless batch run
-├── fd_ns/              # MAC FD solver — C++20/Eigen/OpenMP, headless batch run
-│   ├── Makefile
-│   ├── README.md       # theory, references, CLI docs
-│   ├── src/            # C++ source files
-│   └── output/         # drag_lift.csv, vorticity_*.txt
-├── data/
-│   └── ghia1982.dat    # Ghia et al. (1982) reference data for lid-driven cavity validation
-├── docs/
-│   └── reference.md    # upstream Taichi LBM README (original source / theory)
-├── karman_output/      # FEM solver output: *.vtu, *.pvd, drag_lift.csv, drag.png, lift.png
-├── pyproject.toml
-└── uv.lock
-```
-
-### `taichi_lbm.py` — Lattice Boltzmann Method
-
-| Case | `flow_case` | Grid | Re |
-|---|---|---|---|
-| Kármán Vortex Street | `0` | 801 × 201 | configurable (default 400) |
-| Lid-driven Cavity | `1` | 256 × 256 | 1000 |
-
-### `vortex.py` — NGSolve FEM (Navier-Stokes)
-
-Taylor-Hood P(k)/P(k-1) elements, IMEX-1 time integration, Schäfer-Turek benchmark geometry (2.2 × 0.41 m channel, cylinder diameter 0.1 m at (0.2, 0.2)).
-
-| Option | Default | Description |
-|---|---|---|
-| `--Re` | 100 | Reynolds number |
-| `--dt` | 0.0005 | Time step (s) |
-| `--tend` | 8.0 | End time (s) |
-| `--order` | 2 | FE polynomial order for velocity |
-| `--maxh` | 0.07 | Max mesh element size |
-| `--vtk-interval` | 50 | Write VTK every N steps |
-
-### `fd_ns/` — C++ Finite-Difference (Navier-Stokes)
-
-MAC staggered grid, fractional-step (Chorin projection), Adams-Bashforth 2 convection,
-SOR pressure Poisson. Same Schäfer-Turek geometry; targets Re up to ~3000.
+### FD solver — C++20, headless
 
 ```bash
-cd fd_ns && make
-./fd_karman --Re 100 --tend 20.0          # Re=100 benchmark
-./fd_karman --Re 1000 --nx 880 --ny 164   # high-Re on refined grid
+cd fd_ns
+make                                          # builds fd_karman
+make test                                     # builds and runs unit tests
+
+./fd_karman --Re 100 --tend 20.0             # benchmark run
+./fd_karman --Re 1000 --nx 880 --ny 164      # high-Re on refined grid
 ```
 
-See [`fd_ns/README.md`](fd_ns/README.md) for full theory, CLI options, and references.
+Output written to `fd_ns/output/`. Visualise:
+
+```bash
+# Drag / lift time series
+uv run python fd_ns/plot_fd.py forces
+
+# Vorticity snapshot
+uv run python fd_ns/plot_fd.py vorticity fd_ns/output/vorticity_010000.txt
+
+# Animated vorticity (requires ffmpeg)
+uv run python fd_ns/plot_fd.py animate --save karman.mp4
+```
+
+![Drag and lift coefficient time series (Re = 400)](forces.png)
 
 | Option | Default | Description |
 |---|---|---|
@@ -109,15 +108,80 @@ See [`fd_ns/README.md`](fd_ns/README.md) for full theory, CLI options, and refer
 | `--dt` | 0.001 | Time step (s) |
 | `--tend` | 20.0 | End time (s) |
 
+See [`fd_ns/README.md`](fd_ns/README.md) for full theory, derivation, and benchmark results.
+
+---
+
+### WiFi / Helmholtz solver — Julia
+
+Solves ∇²E + k²n²E = S on a 10 × 8 m floor plan to find the optimal router placement.
+
+```bash
+# Standalone single-file solver (1.2 GHz) — plots signal map
+julia helmholtz.jl
+
+# Exhaustive coarse grid search → wifi_problem/output/coarse_scores.csv
+julia wifi_problem/scripts/evaluate_coarse_grid.jl
+
+# Simulated annealing optimisation (2.4 GHz)
+julia wifi_problem/scripts/optimize_placement.jl
+
+# Visualise coarse grid heatmap
+uv run python wifi_problem/scripts/plot_coarse_heatmap.py
+```
+
+---
+
+## Repository structure
+
+```
+.
+├── taichi_lbm.py           # D2Q9 LBM solver — GPU via Taichi, interactive
+├── vortex.py               # Taylor-Hood FEM solver — NGSolve, headless
+├── helmholtz.jl            # Standalone WiFi Helmholtz solver (single-file)
+├── karman.mp4              # Vorticity animation (LBM, Re = 400)
+├── forces.png              # Drag/lift time series (FD solver, Re = 400)
+├── fd_ns/
+│   ├── Makefile
+│   ├── README.md           # Theory, derivation, CLI docs, benchmark results
+│   ├── src/                # C++ source (MAC grid, BC, SOR Poisson, AB2)
+│   └── output/             # drag_lift.csv, vorticity_*.txt (gitignored)
+├── wifi_problem/
+│   ├── src/helmholtz.jl    # Shared solver library
+│   ├── scripts/            # Grid search, annealing, Python heatmap plotter
+│   └── output/             # CSV results (gitignored)
+├── data/
+│   └── ghia1982.dat        # Ghia et al. (1982) lid-driven cavity reference data
+├── docs/
+│   ├── supg_theory.md      # SUPG stabilisation theory (FEM at high Re)
+│   └── reference.md        # Upstream Taichi LBM README / LBM background
+├── pyproject.toml
+└── uv.lock
+```
+
 ---
 
 ## Dependencies
 
-- **Python ≥ 3.12** managed with [uv](https://github.com/astral-sh/uv)
-- `taichi ≥ 1.7.4` — GPU kernel compilation (CUDA / Metal / Vulkan)
-- `ngsolve ≥ 6.2` — finite element framework
-- `matplotlib ≥ 3.10`
-- **ParaView** — required to visualise the VTK output of `vortex.py` (`karman_output/*.pvd`). Install from [paraview.org](https://www.paraview.org/download/) or via your system package manager (`brew install paraview`, `apt install paraview`, etc.). Not managed by uv.
+**Python** (managed by [uv](https://github.com/astral-sh/uv)):
+
+| Package | Purpose |
+|---|---|
+| `taichi ≥ 1.7.4` | GPU kernel compilation (CUDA / Metal / Vulkan) |
+| `ngsolve ≥ 6.2` | Finite element framework |
+| `matplotlib ≥ 3.10` | Plotting |
+
+**C++ / system:**
+
+- GCC ≥ 10 or Clang with C++20 support
+- Eigen3 (`brew install eigen` / `apt install libeigen3-dev`)
+- OpenMP (bundled with GCC; on macOS via `brew install gcc`)
+
+**Julia** (not managed by uv — install from [julialang.org](https://julialang.org/downloads/)):
+
+- Standard library only (`SparseArrays`, `LinearAlgebra`) plus `Plots.jl`
+
+**ParaView** — to visualise `karman_output/*.pvd`. Install from [paraview.org](https://www.paraview.org/download/) or via `brew install paraview` / `apt install paraview`.
 
 ---
 

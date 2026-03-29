@@ -55,7 +55,10 @@ def cmd_forces(args):
     if not csv.exists():
         sys.exit(f"Not found: {csv}")
 
-    data = np.loadtxt(csv, delimiter=",", skiprows=1)
+    with open(csv) as _f:
+        _first = _f.readline().strip()
+    _skip = 1 if _first.startswith("time") else 0
+    data = np.loadtxt(csv, delimiter=",", skiprows=_skip)
     t, cd, cl = data[:, 0], data[:, 1], data[:, 2]
 
     fig, axes = plt.subplots(2, 1, figsize=(10, 5), sharex=True)

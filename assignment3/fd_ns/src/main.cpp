@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cmath>
 #include <string>
+#include <filesystem>
 
 static void usage(const char *prog) {
     std::printf(
@@ -62,6 +63,7 @@ int main(int argc, char **argv) {
     Eigen::MatrixXd Nu_prev = Eigen::MatrixXd::Zero(nx+1, ny);
     Eigen::MatrixXd Nv_prev = Eigen::MatrixXd::Zero(nx, ny+1);
 
+    std::filesystem::create_directories(outdir);
     std::string csv_path = outdir + "/drag_lift.csv";
     // Clear old CSV
     std::remove(csv_path.c_str());
