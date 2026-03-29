@@ -7,6 +7,8 @@ that maximizes total signal strength at all measurement points.
 
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 include(joinpath(@__DIR__, "..", "src", "helmholtz.jl"))
+push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
+include(joinpath(@__DIR__, "..", "wifi_optimization.jl"))
 
 using StaticArrays
 using Printf
@@ -100,7 +102,7 @@ function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n
         end
 
         # evaluate candidate by solving with prebuilt M
-        candidate_eval, candidate_u = signal_strength(M, rx, ry, nx, ny, dx, measurement_points)
+        candidate_eval, candidate_u = signal_strength(M, candidate[1], candidate[2], nx, ny, dx, measurement_points)
 
         # Accept if better, or with probability based on temperature
         if candidate_eval > best_eval || rand() < exp((candidate_eval - current_eval) / t)
@@ -131,7 +133,7 @@ end
 
 using DelimitedFiles
 
-function run_optimization_from_candidate(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.5, start_temperature=1.0, output_path=false)
+function run_optimization(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.5, start_temperature=1.0, output_path=false)
     println("\nStarting optimization from candidate #$idx at ($rx, $ry)")
     if output_path
         best, best_eval, best_u, scores, path = simulated_annealing(
@@ -200,14 +202,13 @@ function main()
     end
     
     # parameters
-    n_iterations = 10
-    step_size = 0.15
-    start_temperature = 0.1
+    n_iterations = 500
+    step_size = 0.2
+    start_temperature = 0.5
 
-    
     results = []
     for (i, (rx, ry)) in enumerate(candidates)
-        r = run_optimization_from_candidate(rx, ry, F, floor, i; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature, output_path=true)
+        r = run_optimization(rx, ry, F, floor, i; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature, output_path=true)
         push!(results, r)
     end
     # Save summary CSV
@@ -228,4 +229,7 @@ function main()
     println("\nOverall best candidate: #$(results[idx_best].idx) start=$(results[idx_best].init) best=$(results[idx_best].best) score=$(results[idx_best].score)")
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
+end
