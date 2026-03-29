@@ -188,3 +188,13 @@ uv run python wifi_problem/scripts/plot_coarse_heatmap.py
 ## Contributors
 
 [![git-fame](https://git-fame.cdcl.ml/gh/lorenzotecchia/SC-assignments)](https://github.com/lorenzotecchia/SC-assignments)
+
+### Contribution breakdown (2026-03-08 → 2026-03-29)
+
+> Generated with `git-fame --since 2026-03-08 --until 2026-03-29`. Total: 40 commits, 5733 lines, 39 files.
+
+| Author    |   loc |   commits |   files |  distribution (loc/commits/files) |
+|:----------|------:|----------:|--------:|:----------------------------------|
+| Lorenzo   |  3772 |        28 |      29 | 65.8% / 70.0% / 74.4%            |
+| pentolame |  1571 |         7 |       7 | 27.4% / 17.5% / 17.9%            |
+| zzzimtzoe |   390 |         5 |       3 |  6.8% / 12.5% /  7.7%            |
