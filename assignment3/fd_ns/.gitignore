@@ -5,3 +5,4 @@ test_ns
 # simulation output (large, regenerable)
 output/*.csv
 output/*.txt
+output/re*/
