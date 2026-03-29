@@ -7,8 +7,6 @@ that maximizes total signal strength at all measurement points.
 
 push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
 include(joinpath(@__DIR__, "..", "src", "helmholtz.jl"))
-push!(LOAD_PATH, joinpath(@__DIR__, "..", "src"))
-include(joinpath(@__DIR__, "..", "wifi_optimization.jl"))
 
 using StaticArrays
 using Printf
@@ -44,6 +42,7 @@ measurement_points = [
     (9.0, 7.0, "Bedroom")
 ]
 
+
 function get_neighbor(rx, ry, nx, ny, dx, floor, measurement_points, step_size, trials=0)
     """
     Generates a random neighbor position within step_size distance.
@@ -64,7 +63,7 @@ function get_neighbor(rx, ry, nx, ny, dx, floor, measurement_points, step_size, 
     end
 end
 
-function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n_iterations, step_size, temp; output_path = false)
+function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n_iterations, step_size, temp; output_path = false, topk)
     """
     Performs simulated annealing to optimize router placement.
 
@@ -82,6 +81,10 @@ function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n
     best_eval, best_u = signal_strength(M, rx, ry, nx, ny, dx, measurement_points)
 
     scores = [best_eval]
+
+    if !isnothing(topk)
+        insert!(topk, best_eval, rx, ry)
+    end
 
     # path storage (vector of [x,y,score] vectors) when requested
     path = Vector{Vector{Float64}}()
@@ -103,6 +106,11 @@ function simulated_annealing(M, rx, ry, nx, ny, dx, floor, measurement_points, n
 
         # evaluate candidate by solving with prebuilt M
         candidate_eval, candidate_u = signal_strength(M, candidate[1], candidate[2], nx, ny, dx, measurement_points)
+
+
+        if !isnothing(topk)
+            insert!(topk, candidate_eval, candidate[1], candidate[2])
+        end
 
         # Accept if better, or with probability based on temperature
         if candidate_eval > best_eval || rand() < exp((candidate_eval - current_eval) / t)
@@ -133,17 +141,17 @@ end
 
 using DelimitedFiles
 
-function run_optimization(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.5, start_temperature=1.0, output_path=false)
-    println("\nStarting optimization from candidate #$idx at ($rx, $ry)")
+function run_optimization(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.5, start_temperature=1.0, output_path=false, topk=nothing)
+    println("\nStarting optimization from candidate #$idx at ($rx, $ry), with step size $step_size and starting temperature $start_temperature")
     if output_path
         best, best_eval, best_u, scores, path = simulated_annealing(
             M, rx, ry, nx, ny, dx, floor, measurement_points,
-            n_iterations, step_size, start_temperature; output_path=true
+            n_iterations, step_size, start_temperature; output_path=true, topk=topk
         )
     else
         best, best_eval, best_u, scores = simulated_annealing(
             M, rx, ry, nx, ny, dx, floor, measurement_points,
-            n_iterations, step_size, start_temperature; output_path=false
+            n_iterations, step_size, start_temperature; output_path=false, topk=topk
         )
     end
 
@@ -155,6 +163,7 @@ function run_optimization(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.
 
     # If requested, save the path taken (x,y,score) per row
     if output_path && length(path) > 0
+        println("acceptance rate: ", round(length(path)/n_iterations),"%")
         path_mat = transpose(hcat(path...))
         open("output/optimization_path_candidate_$(idx).csv", "w") do io
             println(io, "x,y,score")
@@ -167,7 +176,34 @@ function run_optimization(rx, ry, M, floor, idx; n_iterations=1000, step_size=0.
     return (idx=idx, init=(rx,ry), best=best, score=best_eval)
 end
 
+# Add this struct and helpers at the top of the file
+mutable struct TopK
+    k::Int
+    entries::Vector{Tuple{Float64, Float64, Float64}}  # (score, x, y)
+end
+
+TopK(k) = TopK(k, Tuple{Float64, Float64, Float64}[])
+
+function insert!(topk::TopK, score, x, y)
+    push!(topk.entries, (score, x, y))
+    sort!(topk.entries, by=e->e[1], rev=true)
+    if length(topk.entries) > topk.k
+        resize!(topk.entries, topk.k)
+    end
+end
+
+function save_topk(topk::TopK, path="output/top100_annealing.csv")
+    open(path, "w") do io
+        println(io, "rank,x,y,score")
+        for (i, (score, x, y)) in enumerate(topk.entries)
+            println(io, "$i,$(round(x,digits=4)),$(round(y,digits=4)),$(round(score,digits=6))")
+        end
+    end
+end
+
 function main()
+    topk = TopK(100)
+
     println("Points per wavelength: ", round(lambda/dx))
 
     # Create output dir
@@ -202,13 +238,13 @@ function main()
     end
     
     # parameters
-    n_iterations = 500
-    step_size = 0.2
+    n_iterations = 1000
+    step_size = 0.15
     start_temperature = 0.5
 
     results = []
     for (i, (rx, ry)) in enumerate(candidates)
-        r = run_optimization(rx, ry, F, floor, i; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature, output_path=true)
+        r = run_optimization(rx, ry, F, floor, i; n_iterations=n_iterations, step_size=step_size, start_temperature=start_temperature, output_path=true, topk=topk)
         push!(results, r)
     end
     # Save summary CSV
@@ -218,7 +254,9 @@ function main()
             println(io, string(res.idx, ",", res.init[1], ",", res.init[2], ",", res.best[1], ",", res.best[2], ",", res.score))
         end
     end
-    
+    save_topk(topk)
+    println("Saved top-$(topk.k) positions to output/top100_annealing.csv")
+
 
     # Path files are saved per-candidate inside run_optimization_from_candidate when requested
     # (output_path flag).
@@ -227,6 +265,7 @@ function main()
     best_overall = findmax([res.score for res in results])
     idx_best = best_overall[2]
     println("\nOverall best candidate: #$(results[idx_best].idx) start=$(results[idx_best].init) best=$(results[idx_best].best) score=$(results[idx_best].score)")
+
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

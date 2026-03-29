@@ -11,7 +11,6 @@ from matplotlib.colors import LinearSegmentedColormap
 def plot_wifi_heatmap(
     scores_file="output/coarse_scores.csv",
     floor_file="output/floor_plan.csv",
-    spacing=0.5,
 ):
     """
     Creates heatmap visualization of WiFi signal strength.
@@ -29,6 +28,7 @@ def plot_wifi_heatmap(
     # Julia saved scores as shape (num_x, num_y) so rows are x and columns are y.
     # Transpose the matrix for plotting (matplotlib expects array shape (len(ys), len(xs))).
     num_x, num_y = scores.shape
+    spacing = 10.0 / num_x
     xs = np.arange(num_x) * spacing
     ys = np.arange(num_y) * spacing
 
@@ -46,8 +46,18 @@ def plot_wifi_heatmap(
     # Plot heatmap (transpose scores so it matches xs, ys ordering)
     im = ax.pcolormesh(xs, ys, scores.T, cmap="turbo", shading="auto")
 
-    # Add colorbar
-    cbar = plt.colorbar(im, ax=ax, label="Signal Strength")
+    # Add colorbar (smaller/thinner)
+    cbar = plt.colorbar(
+        im,
+        ax=ax,
+        label="Signal Strength",
+        fraction=0.046,
+        pad=0.04,
+        shrink=0.7,
+        aspect=20,
+    )
+    cbar.ax.tick_params(labelsize=17)
+    cbar.set_label("Signal Strength", fontsize=20)
 
     # Plot walls (convert floor grid to same coordinates)
     floor_dx = 10.0 / floor.shape[0]  # assuming 10m width
@@ -58,7 +68,7 @@ def plot_wifi_heatmap(
 
     # Plot measurement points
     for x, y, name in measurement_points:
-        ax.plot(x, y, "wo", markersize=10, markeredgecolor="black", markeredgewidth=1.5)
+        ax.plot(x, y, "wo", markersize=20, markeredgecolor="black", markeredgewidth=1.5)
         ax.text(
             x,
             y + 0.3,
@@ -67,23 +77,20 @@ def plot_wifi_heatmap(
             va="bottom",
             color="white",
             fontweight="bold",
-            fontsize=9,
+            fontsize=20,
             bbox=dict(boxstyle="round,pad=0.3", facecolor="black", alpha=0.7),
         )
 
     # Labels and formatting
-    ax.set_xlabel("X (meters)", fontsize=12)
-    ax.set_ylabel("Y (meters)", fontsize=12)
-    ax.set_title(
-        "WiFi Signal Strength - Coarse Grid Evaluation", fontsize=14, fontweight="bold"
-    )
+    ax.set_xlabel("x (m)", fontsize=17)
+    ax.set_ylabel("y (m)", fontsize=17)
+    ax.set_title("WiFi Signal Strength - Coarse Grid Evaluation", fontsize=25)
     ax.set_aspect("equal")
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig("output/coarse_heatmap_python.png", dpi=300, bbox_inches="tight")
-    print(f"Saved heatmap to output/coarse_heatmap_python.png")
-    plt.show()
+    plt.savefig("output/coarse_heatmap.png", dpi=300, bbox_inches="tight")
+    print(f"Saved heatmap to output/coarse_heatmap.png")
 
 
 if __name__ == "__main__":

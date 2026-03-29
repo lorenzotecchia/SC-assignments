@@ -18,7 +18,7 @@ using Printf
 
 # Physical constants
 c = 3e8  # speed of light
-f = 1.2e9  # frequency (Hz)
+f = 2.4e9  # frequency (Hz)
 lambda = c / f  # wavelength
 
 # Grid resolution (points per wavelength)
@@ -62,8 +62,8 @@ function coarse_candidate_evaluation(inside, points, spacing, M, nx, ny, dx, flo
         return
     end
 
-    num_x = Int(maximum(getindex.(points, 1)) / spacing) + 1
-    num_y = Int(maximum(getindex.(points, 2)) / spacing) + 1
+    num_x = Int(round(maximum(getindex.(points, 1)) / spacing)) + 1
+    num_y = Int(round(maximum(getindex.(points, 2)) / spacing)) + 1
     
     scores = fill(NaN, num_x, num_y)
     count = 0
@@ -125,12 +125,12 @@ function main()
     F = lu(M)
 
     # Define search region (polygon vertices)
-    x_poly = [2., 2., 1., 1., 9., 9., 7.5, 7.5, 2.]
-    y_poly = [0., 1.5, 1.5, 6.5, 6.5, 3., 3., 0., 0.]
+    y_poly = [0., 8., 8., 0., 0.]
+    x_poly = [0., 0., 10., 10., 0.]
     polygon = SVector.(x_poly, y_poly)
     
     # Coarse grid spacing (meters)
-    spacing = 0.5
+    spacing = 0.1
     
     # Generate candidate grid
     xa = 0:spacing:x_meter
@@ -161,4 +161,6 @@ function main()
     println("Score matrix size: $(size(scores))")
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end

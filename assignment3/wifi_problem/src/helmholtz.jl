@@ -11,6 +11,7 @@ This module provides the fundamental functions for:
 using SparseArrays
 using LinearAlgebra
 using Random
+using Statistics
 
 # Coordinate conversion: meters to grid indices
 function m2x(x, dx)
@@ -223,7 +224,7 @@ function measurement(u, nx, ny, dx, mx, my)
     ix = m2x(mx, dx)
     iy = m2y(my, dx)
 
-    radius = max(1, m2x(0.05, dx))
+    radius = max(1, Int(round(0.05 / dx)))
 
     total = 0.
     for i in -radius:radius
