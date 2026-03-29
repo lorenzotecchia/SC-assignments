@@ -2,9 +2,9 @@
 
 Three independent Navier-Stokes solvers for the Schäfer-Turek benchmark (Kármán vortex street, Re 100–3000) and a WiFi signal optimisation problem using the 2D Helmholtz equation.
 
-[![Vorticity animation](forces.png)](karman.mp4)
 
-> Vorticity field from the LBM solver at Re = 400. Generated with `uv run python taichi_lbm.py 0`.
+https://github.com/user-attachments/assets/ab273d87-80ee-4a3f-91a1-619a25206af2
+
 
 ---
 
