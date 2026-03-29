@@ -26,9 +26,9 @@ function pathloss(router, dim_x, dim_y, scaling)
     Dist[router...] = Dist[router[1]-1, router[2]-1]
 
     # compute path loss
-    sigal_loss = similar(Dist, Float64)
-    sigal_loss = 20 .* log10.(Dist .^ -2)
-    return sigal_loss
+    signal_loss = similar(Dist, Float64)
+    signal_loss = 1.0 ./(Dist .^ 2)
+    return signal_loss
 end
 
 
@@ -105,8 +105,52 @@ function shadowing_wave(floor, router)
         end
         
         # combine effects to get signal strength
-        S[x,y] = attenuation * cos(phase_shift)
+        S[x,y] = (attenuation * abs(cos(phase_shift)))^2
     end
 
     return S
+end
+
+
+function combined_signal(router, floor, dim_x, dim_y, scaling)
+    """
+    Combines path loss and shadowing and returns signal strength map 
+    """
+
+    # pathloss
+    PL = pathloss(router, dim_x, dim_y, scaling)
+
+    # shadowing
+    SH = shadowing_wave(floor, router)
+
+    # combined result
+    signal = PL .* SH
+
+    return signal
+end
+
+
+function fast_signal_strength(router, floor, dim_x, dim_y, scaling)
+    """returns sum over signal strength at measurement locations """
+
+    # estimated signal strength at each pixel
+    signal_map = combined_signal(router, floor, dim_x, dim_y, scaling)
+
+    # signal quality across measurment points
+    total = 0.0
+    for (mx, my, _) in measurement_points
+        ix = m2x(mx)
+        iy = m2y(my)
+
+        radius = m2x(0.05)
+
+        # sum signal in 5cm region
+        for i in 0:radius, j in 0:radius
+            if (i+j)^2 < radius
+                total += signal_map[ix+i, iy+j]
+            end
+        end
+    end
+
+    return total
 end
